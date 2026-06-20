@@ -94,8 +94,48 @@
       <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="incomeGoalProgress()" aria-valuemin="0" aria-valuemax="100">
         <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
       </div>
-      <a routerLink="/settings" class="panel-action-link">Adjust goal in settings</a>
+      <a routerLink="/plan" class="panel-action-link">Plan your path to financial independence →</a>
     </div>
+
+    @if (achievedMilestones().length > 0 || nextMilestones().length > 0) {
+      <div class="panel milestones-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Investor Milestones</h2>
+            <p class="panel-desc">Track your progress toward key wealth and income goals.</p>
+          </div>
+          @if (achievedMilestones().length > 0) {
+            <span class="milestone-count">{{ achievedMilestones().length }} unlocked</span>
+          }
+        </div>
+        @if (achievedMilestones().length > 0) {
+          <div class="milestone-badges">
+            @for (milestone of achievedMilestones(); track milestone.id) {
+              <span class="milestone-badge achieved" [class]="'cat-' + milestone.category">
+                <span class="badge-icon" aria-hidden="true">✓</span>
+                {{ milestone.title }}
+              </span>
+            }
+          </div>
+        }
+        @if (nextMilestones().length > 0) {
+          <div class="milestone-progress-list">
+            @for (milestone of nextMilestones(); track milestone.id) {
+              <div class="milestone-progress-item">
+                <div class="milestone-progress-header">
+                  <strong>{{ milestone.title }}</strong>
+                  <span>{{ milestone.progress | number: '1.0-0' }}%</span>
+                </div>
+                <div class="progress-bar mini">
+                  <div class="progress-fill" [style.width.%]="milestone.progress"></div>
+                </div>
+                <small>{{ milestone.description }}</small>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
 
     @if (insights(); as ins) {
       @if (ins.alerts.length > 0) {
@@ -218,6 +258,18 @@
           </span>
           <span class="nav-card-arrow" aria-hidden="true">→</span>
         </a>
+        <a routerLink="/plan" class="nav-card">
+          <span class="nav-card-icon plan" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="nav-card-body">
+            <strong>Financial Plan</strong>
+            <span>Model your path to financial independence</span>
+          </span>
+          <span class="nav-card-arrow" aria-hidden="true">→</span>
+        </a>
         <a routerLink="/holdings" class="nav-card">
           <span class="nav-card-icon holdings" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -255,6 +307,10 @@
         <div class="feature-item">
           <strong>Insights</strong>
           <span>Health score &amp; watchlist</span>
+        </div>
+        <div class="feature-item">
+          <strong>Plan</strong>
+          <span>FIRE calculator &amp; projections</span>
         </div>
         <div class="feature-item">
           <strong>Private</strong>

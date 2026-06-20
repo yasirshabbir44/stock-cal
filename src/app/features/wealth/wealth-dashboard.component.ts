@@ -18,6 +18,7 @@ export class WealthDashboardComponent implements OnInit {
 
   readonly metrics = this.portfolio.metrics;
   readonly snapshots = this.portfolio.portfolioSnapshots;
+  readonly benchmark = this.portfolio.benchmarkComparison;
   readonly loading = this.portfolio.loading;
 
   readonly chartData = computed<ChartData<'line'>>(() => {

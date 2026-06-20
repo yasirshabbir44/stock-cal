@@ -27,6 +27,8 @@ export class HomeDashboardComponent implements OnInit {
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
   readonly settings = this.portfolio.settings;
   readonly lastUpdated = this.portfolio.lastUpdated;
+  readonly milestones = this.portfolio.portfolioMilestones;
+  readonly achievedMilestones = this.portfolio.achievedMilestones;
   readonly showQuickAdd = signal(false);
   readonly quickAddTicker = signal('');
   readonly quickStartStocks = POPULAR_STOCKS.slice(0, 5);
@@ -61,6 +63,13 @@ export class HomeDashboardComponent implements OnInit {
       ],
     };
   });
+
+  readonly nextMilestones = computed(() =>
+    this.milestones()
+      .filter((m) => !m.achieved)
+      .sort((a, b) => b.progress - a.progress)
+      .slice(0, 3),
+  );
 
   readonly allocationOptions = computed<ChartConfiguration<'doughnut'>['options']>(() => ({
     plugins: {

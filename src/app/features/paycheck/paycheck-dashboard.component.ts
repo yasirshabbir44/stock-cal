@@ -67,6 +67,12 @@ export class PaycheckDashboardComponent implements OnInit {
     },
   };
 
+  readonly upcomingTotal = computed(() => this.portfolio.upcomingDividendTotal(30));
+
+  readonly sortedSchedules = computed(() =>
+    [...this.schedules()].sort((a, b) => a.payDate.localeCompare(b.payDate)),
+  );
+
   readonly averageYieldOnCost = computed(() => {
     const m = this.metrics();
     if (!m || m.holdings.length === 0) {

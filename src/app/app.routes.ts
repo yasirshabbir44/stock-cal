@@ -18,6 +18,11 @@ export const routes: Routes = [
       import('./features/paycheck/paycheck-dashboard.component').then((m) => m.PaycheckDashboardComponent),
   },
   {
+    path: 'plan',
+    loadComponent: () =>
+      import('./features/plan/plan-dashboard.component').then((m) => m.PlanDashboardComponent),
+  },
+  {
     path: 'insights',
     loadComponent: () =>
       import('./features/insights/insights-dashboard.component').then((m) => m.InsightsDashboardComponent),

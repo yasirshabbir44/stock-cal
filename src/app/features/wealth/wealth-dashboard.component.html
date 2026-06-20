@@ -42,6 +42,37 @@
       />
     </div>
 
+    @if (benchmark(); as bench) {
+      <div class="panel benchmark-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Benchmark Comparison</h2>
+            <p class="panel-desc">
+              How your portfolio performs vs. {{ bench.benchmarkLabel }} over {{ bench.trackingDays }} days of tracking.
+            </p>
+          </div>
+        </div>
+        <div class="benchmark-grid">
+          <div class="benchmark-stat">
+            <span class="benchmark-label">Your Portfolio</span>
+            <span class="benchmark-value" [class.positive]="bench.portfolioGrowthPercent >= 0" [class.negative]="bench.portfolioGrowthPercent < 0">
+              {{ bench.portfolioGrowthPercent >= 0 ? '+' : '' }}{{ bench.portfolioGrowthPercent | number: '1.2-2' }}%/yr
+            </span>
+          </div>
+          <div class="benchmark-stat">
+            <span class="benchmark-label">S&P 500 Benchmark</span>
+            <span class="benchmark-value">+10.00%/yr</span>
+          </div>
+          <div class="benchmark-stat highlight">
+            <span class="benchmark-label">Alpha (Outperformance)</span>
+            <span class="benchmark-value" [class.positive]="bench.alphaPercent >= 0" [class.negative]="bench.alphaPercent < 0">
+              {{ bench.alphaPercent >= 0 ? '+' : '' }}{{ bench.alphaPercent | number: '1.2-2' }}%
+            </span>
+          </div>
+        </div>
+      </div>
+    }
+
     <div class="panel chart-panel">
       <h2>Portfolio Value Over Time</h2>
       @if (snapshots().length > 0) {
