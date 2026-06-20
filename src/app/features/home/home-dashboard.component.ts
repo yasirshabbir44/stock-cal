@@ -21,6 +21,7 @@ export class HomeDashboardComponent implements OnInit {
   private readonly theme = inject(ThemeService);
 
   readonly metrics = this.portfolio.metrics;
+  readonly insights = this.portfolio.portfolioInsights;
   readonly holdings = this.portfolio.holdings;
   readonly loading = this.portfolio.loading;
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;

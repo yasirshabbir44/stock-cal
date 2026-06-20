@@ -4,6 +4,8 @@ import { Holding, HoldingInput } from '../models/holding.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
 import { PortfolioSnapshot } from '../models/portfolio-snapshot.model';
 import { PortfolioMetrics } from '../models/portfolio-metrics.model';
+import { PortfolioInsights } from '../models/portfolio-insights.model';
+import { WatchlistItem, WatchlistItemInput } from '../models/watchlist-item.model';
 import { DEFAULT_SETTINGS, PortfolioExport, UserSettings } from '../models/user-settings.model';
 import { PortfolioDbService } from './portfolio-db.service';
 import { PortfolioCalculatorService } from './portfolio-calculator.service';
@@ -28,6 +30,7 @@ export class PortfolioFacadeService {
   private initPromise: Promise<void> | null = null;
 
   readonly holdings = signal<Holding[]>([]);
+  readonly watchlist = signal<WatchlistItem[]>([]);
   readonly dividendSchedules = signal<DividendSchedule[]>([]);
   readonly portfolioSnapshots = signal<PortfolioSnapshot[]>([]);
   readonly settings = signal<UserSettings>({ ...DEFAULT_SETTINGS });
@@ -48,6 +51,14 @@ export class PortfolioFacadeService {
         percent: (h.assetValue / metrics.totalPortfolioValue) * 100,
       }))
       .sort((a, b) => b.value - a.value);
+  });
+
+  readonly portfolioInsights = computed<PortfolioInsights | null>(() => {
+    const metrics = this.metrics();
+    if (!metrics) {
+      return null;
+    }
+    return this.calculator.computePortfolioInsights(metrics);
   });
 
   readonly incomeGoalProgress = computed(() => {
@@ -89,17 +100,19 @@ export class PortfolioFacadeService {
     this.error.set(null);
 
     try {
-      const [holdings, schedules, snapshots, settings] = await Promise.all([
+      const [holdings, schedules, snapshots, settings, watchlist] = await Promise.all([
         this.db.getAllHoldings(),
         this.db.getAllDividendSchedules(),
         this.db.getPortfolioSnapshots(),
         this.db.getSettings(),
+        this.db.getAllWatchlistItems(),
       ]);
 
       this.holdings.set(holdings);
       this.dividendSchedules.set(schedules);
       this.portfolioSnapshots.set(snapshots);
       this.settings.set(settings);
+      this.watchlist.set(watchlist);
       this.refreshMetrics();
       this.initialized = true;
 
@@ -294,6 +307,109 @@ export class PortfolioFacadeService {
     }
   }
 
+  async addWatchlistItem(input: WatchlistItemInput): Promise<void> {
+    const ticker = input.ticker.toUpperCase().trim();
+    if (this.watchlist().some((w) => w.ticker === ticker)) {
+      this.toast.info(`${ticker} is already on your watchlist`);
+      return;
+    }
+
+    this.loading.set(true);
+
+    try {
+      const quote = await this.stockApi.fetchQuote(ticker);
+      const now = new Date().toISOString();
+
+      const item: WatchlistItem = {
+        id: crypto.randomUUID(),
+        ticker,
+        companyName: input.companyName,
+        logoUrl: input.logoUrl ?? getStockLogoUrl(ticker),
+        targetPrice: input.targetPrice,
+        notes: input.notes,
+        currentPrice: quote.currentPrice,
+        annualDividendPerShare: quote.annualDividendPerShare,
+        addedAt: now,
+        lastUpdated: now,
+      };
+
+      await this.db.saveWatchlistItem(item);
+      this.watchlist.update((list) => [...list, item]);
+      this.toast.success(`${ticker} added to watchlist`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add to watchlist';
+      this.toast.error(message);
+      throw err;
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async removeWatchlistItem(id: string): Promise<void> {
+    const item = this.watchlist().find((w) => w.id === id);
+    if (!item) {
+      return;
+    }
+
+    await this.db.deleteWatchlistItem(id);
+    this.watchlist.update((list) => list.filter((w) => w.id !== id));
+    this.toast.info(`${item.ticker} removed from watchlist`);
+  }
+
+  async refreshWatchlist(): Promise<void> {
+    const items = this.watchlist();
+    if (items.length === 0) {
+      return;
+    }
+
+    this.loading.set(true);
+
+    try {
+      const updated: WatchlistItem[] = [];
+
+      for (const item of items) {
+        const quote = await this.stockApi.fetchQuote(item.ticker);
+        const refreshed: WatchlistItem = {
+          ...item,
+          currentPrice: quote.currentPrice,
+          annualDividendPerShare: quote.annualDividendPerShare,
+          lastUpdated: new Date().toISOString(),
+        };
+        await this.db.saveWatchlistItem(refreshed);
+        updated.push(refreshed);
+      }
+
+      this.watchlist.set(updated);
+      this.toast.success('Watchlist refreshed');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh watchlist';
+      this.toast.error(message);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async promoteWatchlistToHolding(id: string, shares: number, purchasePrice: number): Promise<void> {
+    const item = this.watchlist().find((w) => w.id === id);
+    if (!item) {
+      return;
+    }
+
+    await this.addHolding({
+      ticker: item.ticker,
+      companyName: item.companyName,
+      logoUrl: item.logoUrl,
+      shares,
+      purchasePrice,
+    });
+    await this.removeWatchlistItem(id);
+  }
+
+  projectIncome(years = 5, dividendGrowthRatePercent = 5): ReturnType<PortfolioCalculatorService['projectIncome']> {
+    const annual = this.metrics()?.totalAnnualDividendIncome ?? 0;
+    return this.calculator.projectIncome(annual, years, dividendGrowthRatePercent);
+  }
+
   async updateMonthlyIncomeGoal(goal: number, showToast = true): Promise<void> {
     const settings: UserSettings = {
       ...this.settings(),
@@ -311,8 +427,34 @@ export class PortfolioFacadeService {
     return this.db.exportPortfolio();
   }
 
+  exportHoldingsCsv(): string {
+    const metrics = this.metrics();
+    if (!metrics) {
+      return 'Ticker,Shares,Purchase Price,Current Price,Cost Basis,Market Value,Unrealized P&L,Growth %,Annual Dividend,Yield on Cost %\n';
+    }
+
+    const header =
+      'Ticker,Shares,Purchase Price,Current Price,Cost Basis,Market Value,Unrealized P&L,Growth %,Annual Dividend,Yield on Cost %';
+    const rows = metrics.holdings.map((h) =>
+      [
+        h.holding.ticker,
+        h.holding.shares,
+        h.holding.purchasePrice.toFixed(2),
+        h.holding.currentPrice.toFixed(2),
+        h.costBasis.toFixed(2),
+        h.assetValue.toFixed(2),
+        h.unrealizedGainLoss.toFixed(2),
+        h.assetGrowthPercent.toFixed(2),
+        h.annualDividendIncome.toFixed(2),
+        h.yieldOnCostPercent.toFixed(2),
+      ].join(','),
+    );
+
+    return [header, ...rows].join('\n');
+  }
+
   async importData(data: PortfolioExport): Promise<void> {
-    if (data.version !== 1 || !Array.isArray(data.holdings)) {
+    if ((data.version !== 1 && data.version !== 2) || !Array.isArray(data.holdings)) {
       this.toast.error('Invalid backup file format');
       throw new Error('Invalid backup file format');
     }
@@ -323,6 +465,7 @@ export class PortfolioFacadeService {
     this.dividendSchedules.set(data.dividendSchedules ?? []);
     this.portfolioSnapshots.set(data.portfolioSnapshots ?? []);
     this.settings.set(data.settings ?? { ...DEFAULT_SETTINGS });
+    this.watchlist.set(data.watchlist ?? []);
     this.refreshMetrics();
     this.toast.success('Portfolio restored from backup');
   }
@@ -330,6 +473,7 @@ export class PortfolioFacadeService {
   async clearPortfolio(): Promise<void> {
     await this.db.clearAll();
     this.holdings.set([]);
+    this.watchlist.set([]);
     this.dividendSchedules.set([]);
     this.portfolioSnapshots.set([]);
     this.settings.set({ ...DEFAULT_SETTINGS });

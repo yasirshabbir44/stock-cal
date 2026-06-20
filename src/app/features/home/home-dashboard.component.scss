@@ -116,6 +116,73 @@
   font-weight: 500;
 }
 
+.insights-preview {
+  border-left: 3px solid #f59e0b;
+}
+
+.insights-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.insights-preview-header h2 {
+  margin: 0;
+}
+
+.health-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
+.health-pill.good {
+  background: var(--accent-income-muted);
+  color: var(--accent-income);
+}
+
+.mini-alerts {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.mini-alerts li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  font-size: 0.875rem;
+}
+
+.mini-alerts span {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.alert-critical {
+  border-left: 3px solid var(--danger);
+}
+
+.alert-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.alert-info {
+  border-left: 3px solid var(--accent-wealth);
+}
+
 .two-col {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

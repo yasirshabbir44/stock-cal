@@ -1,0 +1,215 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Analysis</p>
+      <h1>Portfolio Insights</h1>
+      <p class="subtitle">Health score, diversification alerts, sector breakdown, and your watchlist.</p>
+    </div>
+  </header>
+
+  @if (metrics(); as m) {
+    @if (insights(); as ins) {
+      <div class="health-banner" [style.--score-color]="healthScoreColor(ins.healthScore)">
+        <div class="health-score-ring">
+          <span class="score-value">{{ ins.healthScore }}</span>
+          <span class="score-label">Health</span>
+        </div>
+        <div class="health-details">
+          <h2>{{ ins.healthLabel }} Portfolio</h2>
+          <p>
+            Diversification score: {{ ins.diversificationScore }}/100 · Largest position:
+            {{ ins.largestHoldingPercent | number: '1.1-1' }}%
+          </p>
+          @if (ins.alerts.length === 0) {
+            <p class="all-clear">No critical alerts — your portfolio looks well balanced.</p>
+          }
+        </div>
+      </div>
+
+      @if (ins.alerts.length > 0) {
+        <div class="panel alerts-panel">
+          <h2>Alerts &amp; Recommendations</h2>
+          <ul class="alert-list">
+            @for (alert of ins.alerts; track alert.id) {
+              <li [class]="'alert-' + alert.severity">
+                <span class="alert-badge">{{ alert.severity }}</span>
+                <div>
+                  <strong>{{ alert.title }}</strong>
+                  <p>{{ alert.message }}</p>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <div class="metrics-grid">
+        <app-metric-card
+          label="Unrealized P&L"
+          [value]="m.totalUnrealizedGainLoss"
+          [isCurrency]="true"
+          [positive]="m.totalUnrealizedGainLoss >= 0"
+          [negative]="m.totalUnrealizedGainLoss < 0"
+          subtitle="Market value minus cost basis"
+        />
+        <app-metric-card
+          label="Portfolio Yield"
+          [value]="m.portfolioDividendYieldPercent"
+          [isPercent]="true"
+          subtitle="Annual dividends / portfolio value"
+        />
+        <app-metric-card
+          label="Annual Income"
+          [value]="m.totalAnnualDividendIncome"
+          [isCurrency]="true"
+          subtitle="Projected from current holdings"
+        />
+      </div>
+
+      <div class="two-col">
+        <div class="panel chart-panel">
+          <h2>Sector Allocation</h2>
+          @if (ins.sectorAllocation.length > 0) {
+            <app-chart type="doughnut" [data]="sectorChart()" [options]="sectorOptions()" />
+            <ul class="sector-list">
+              @for (sector of ins.sectorAllocation; track sector.sector) {
+                <li>
+                  <span>{{ sector.sector }}</span>
+                  <span>{{ sector.percent | number: '1.1-1' }}%</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <div class="panel">
+          <h2>Top Performers</h2>
+          @if (ins.topGainers.length > 0 || ins.topLosers.length > 0) {
+            @if (ins.topGainers.length > 0) {
+              <h3 class="sub-heading positive">Gainers</h3>
+              <ul class="performer-list">
+                @for (p of ins.topGainers; track p.ticker) {
+                  <li>
+                    <span class="ticker">{{ p.ticker }}</span>
+                    <span class="positive">+{{ p.growthPercent | number: '1.2-2' }}%</span>
+                    <span class="value">{{ p.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            @if (ins.topLosers.length > 0) {
+              <h3 class="sub-heading negative">Losers</h3>
+              <ul class="performer-list">
+                @for (p of ins.topLosers; track p.ticker) {
+                  <li>
+                    <span class="ticker">{{ p.ticker }}</span>
+                    <span class="negative">{{ p.growthPercent | number: '1.2-2' }}%</span>
+                    <span class="value">{{ p.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          } @else {
+            <p class="empty-note">All positions are at or above cost basis.</p>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="empty-state">
+      <h2>Add holdings for insights</h2>
+      <p>Portfolio health, sector allocation, and alerts appear once you track at least one position.</p>
+      <a routerLink="/holdings" class="btn-primary">Add Your First Stock</a>
+    </div>
+  }
+
+  <div class="panel watchlist-panel">
+    <div class="watchlist-header">
+      <div>
+        <h2>Watchlist</h2>
+        <p class="panel-desc">Track stocks you're researching before buying.</p>
+      </div>
+      @if (watchlist().length > 0) {
+        <button type="button" class="btn-secondary btn-sm" (click)="refreshWatchlist()" [disabled]="loading()">
+          ↻ Refresh
+        </button>
+      }
+    </div>
+
+    <form class="watchlist-form" (submit)="$event.preventDefault(); addToWatchlist()">
+      <app-ticker-autocomplete
+        [ngModel]="watchTicker()"
+        (ngModelChange)="watchTicker.set($event)"
+        (selected)="onWatchTickerSelected($event)"
+        name="watchTicker"
+        placeholder="Search ticker…"
+      />
+      <input
+        type="number"
+        class="target-input"
+        placeholder="Target $"
+        min="0"
+        step="0.01"
+        [ngModel]="watchTargetPrice()"
+        (ngModelChange)="watchTargetPrice.set($event ? +$event : undefined)"
+        name="targetPrice"
+      />
+      <button type="submit" class="btn-primary btn-sm" [disabled]="!watchTicker().trim() || loading()">
+        + Add
+      </button>
+    </form>
+
+    @if (watchlist().length > 0) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Price</th>
+              <th>Yield</th>
+              <th>Target</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of watchlist(); track item.id) {
+              <tr>
+                <td>
+                  <span class="ticker-cell">
+                    <app-stock-icon [symbol]="item.ticker" [logoUrl]="item.logoUrl" size="sm" />
+                    {{ item.ticker }}
+                  </span>
+                </td>
+                <td>{{ item.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td>
+                  @if (item.currentPrice > 0) {
+                    {{ (item.annualDividendPerShare / item.currentPrice) * 100 | number: '1.2-2' }}%
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  @if (item.targetPrice) {
+                    {{ item.targetPrice | currency: 'USD' : 'symbol' : '1.2-2' }}
+                    @if (targetDistance(item); as dist) {
+                      <span class="target-dist" [class.positive]="dist <= 0" [class.negative]="dist > 0">
+                        ({{ dist | number: '1.1-1' }}%)
+                      </span>
+                    }
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <button type="button" class="btn-danger btn-sm" (click)="removeFromWatchlist(item.id)">Remove</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="empty-note">No stocks on your watchlist yet. Search above to start tracking candidates.</p>
+    }
+  </div>
+</section>

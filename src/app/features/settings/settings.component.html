@@ -65,9 +65,10 @@
 
   <div class="panel">
     <h2>Backup &amp; Restore</h2>
-    <p class="panel-desc">Export your portfolio as JSON. Import it on another device or after clearing browser data.</p>
+    <p class="panel-desc">Export your portfolio as JSON or CSV. Import JSON on another device or after clearing browser data.</p>
     <div class="backup-actions">
-      <button type="button" class="btn-secondary" (click)="exportBackup()">↓ Export Backup</button>
+      <button type="button" class="btn-secondary" (click)="exportBackup()">↓ Export Backup (JSON)</button>
+      <button type="button" class="btn-secondary" (click)="exportCsv()">↓ Export Holdings (CSV)</button>
       <label class="btn-secondary file-btn">
         ↑ Import Backup
         <input type="file" accept="application/json,.json" (change)="onImportFile($event)" hidden />

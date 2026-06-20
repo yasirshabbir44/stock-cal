@@ -1,5 +1,6 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ChartData } from 'chart.js';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
@@ -8,7 +9,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 @Component({
   selector: 'app-paycheck-dashboard',
   standalone: true,
-  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [FormsModule, MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, DatePipe],
   templateUrl: './paycheck-dashboard.component.html',
   styleUrl: './paycheck-dashboard.component.scss',
 })
@@ -73,6 +74,49 @@ export class PaycheckDashboardComponent implements OnInit {
     const total = m.holdings.reduce((sum, h) => sum + h.yieldOnCostPercent, 0);
     return total / m.holdings.length;
   });
+
+  readonly dividendGrowthRate = signal(5);
+
+  readonly incomeProjection = computed(() =>
+    this.portfolio.projectIncome(5, this.dividendGrowthRate()),
+  );
+
+  readonly projectionChart = computed<ChartData<'line'>>(() => {
+    const projection = this.incomeProjection();
+    return {
+      labels: projection.map((p) => String(p.year)),
+      datasets: [
+        {
+          label: 'Projected Annual Income',
+          data: projection.map((p) => p.annualIncome),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+        },
+      ],
+    };
+  });
+
+  readonly projectionOptions = {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: { parsed: { y: number | null } }) =>
+            `$${(ctx.parsed.y ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0 })}/yr`,
+        },
+      },
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: (value: string | number) => `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        },
+      },
+    },
+  };
 
   ngOnInit(): void {
     void this.portfolio.init();

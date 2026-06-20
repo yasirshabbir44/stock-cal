@@ -78,6 +78,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
+  exportCsv(): void {
+    const csv = this.portfolio.exportHoldingsCsv();
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stockcal-holdings-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async onImportFile(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];

@@ -60,6 +60,50 @@
       }
     </div>
 
+    <div class="panel projection-panel">
+      <div class="projection-header">
+        <div>
+          <h2>5-Year Income Projection</h2>
+          <p class="panel-desc">Estimate future passive income assuming steady dividend growth.</p>
+        </div>
+        <label class="growth-control">
+          Dividend growth
+          <div class="growth-input">
+            <input
+              type="range"
+              min="0"
+              max="15"
+              step="0.5"
+              [ngModel]="dividendGrowthRate()"
+              (ngModelChange)="dividendGrowthRate.set(+$event)"
+            />
+            <span>{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
+          </div>
+        </label>
+      </div>
+      <app-chart type="line" [data]="projectionChart()" [options]="projectionOptions" />
+      <div class="projection-table-wrap">
+        <table class="projection-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Annual Income</th>
+              <th>Monthly Income</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of incomeProjection(); track row.year) {
+              <tr>
+                <td>{{ row.year }}</td>
+                <td>{{ row.annualIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td>{{ row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>Dividend Calendar</h2>
       @if (schedules().length > 0) {
