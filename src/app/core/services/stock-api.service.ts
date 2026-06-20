@@ -3,7 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { POPULAR_STOCKS } from '../constants/popular-stocks';
+import { getSectorForTicker } from '../constants/stock-sectors';
 import { DividendSchedule } from '../models/dividend-schedule.model';
+import { StockProfile, StockFundamentals } from '../models/stock-analysis.model';
 import { StockSuggestion } from '../models/stock-search.model';
 import { getStockLogoUrl } from '../utils/stock-logo.util';
 
@@ -12,8 +14,58 @@ export interface StockQuote {
   annualDividendPerShare: number;
 }
 
+export interface StockQuoteDetail extends StockQuote {
+  changeAmount: number;
+  changePercent: number;
+  dayHigh: number;
+  dayLow: number;
+  previousClose: number;
+}
+
 interface FinnhubQuoteResponse {
   c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+}
+
+interface FinnhubProfileResponse {
+  name: string;
+  ticker: string;
+  finnhubIndustry: string;
+  country: string;
+  exchange: string;
+  ipo: string;
+  marketCapitalization: number;
+  shareOutstanding: number;
+  weburl: string;
+  logo: string;
+}
+
+interface FinnhubMetricResponse {
+  metric: {
+    '52WeekHigh'?: number;
+    '52WeekLow'?: number;
+    beta?: number;
+    peAnnual?: number;
+    epsAnnual?: number;
+    payoutRatioAnnual?: number;
+    dividendYieldIndicatedAnnual?: number;
+    revenueGrowth3Y?: number;
+    netProfitMarginAnnual?: number;
+    operatingMarginAnnual?: number;
+    grossMarginAnnual?: number;
+    epsGrowth3Y?: number;
+    dividendGrowthRate5Y?: number;
+    'totalDebt/totalEquityAnnual'?: number;
+    currentRatioAnnual?: number;
+    roeRfy?: number;
+    pbAnnual?: number;
+    psAnnual?: number;
+  };
 }
 
 interface FinnhubDividendEntry {
@@ -30,14 +82,274 @@ interface FinnhubSearchResponse {
   }>;
 }
 
-const MOCK_QUOTES: Record<string, StockQuote> = {
-  AAPL: { currentPrice: 195.5, annualDividendPerShare: 0.96 },
-  MSFT: { currentPrice: 420.25, annualDividendPerShare: 3.0 },
-  JNJ: { currentPrice: 155.8, annualDividendPerShare: 4.76 },
-  KO: { currentPrice: 62.4, annualDividendPerShare: 1.94 },
-  O: { currentPrice: 58.3, annualDividendPerShare: 3.07 },
-  SCHD: { currentPrice: 27.5, annualDividendPerShare: 0.82 },
-  VYM: { currentPrice: 118.2, annualDividendPerShare: 3.45 },
+const MOCK_QUOTES: Record<string, StockQuoteDetail> = {
+  AAPL: {
+    currentPrice: 195.5,
+    annualDividendPerShare: 0.96,
+    changeAmount: 1.2,
+    changePercent: 0.62,
+    dayHigh: 197.1,
+    dayLow: 193.8,
+    previousClose: 194.3,
+  },
+  MSFT: {
+    currentPrice: 420.25,
+    annualDividendPerShare: 3.0,
+    changeAmount: -2.15,
+    changePercent: -0.51,
+    dayHigh: 424.0,
+    dayLow: 418.5,
+    previousClose: 422.4,
+  },
+  JNJ: {
+    currentPrice: 155.8,
+    annualDividendPerShare: 4.76,
+    changeAmount: 0.45,
+    changePercent: 0.29,
+    dayHigh: 156.5,
+    dayLow: 154.9,
+    previousClose: 155.35,
+  },
+  KO: {
+    currentPrice: 62.4,
+    annualDividendPerShare: 1.94,
+    changeAmount: 0.12,
+    changePercent: 0.19,
+    dayHigh: 62.8,
+    dayLow: 61.9,
+    previousClose: 62.28,
+  },
+  O: {
+    currentPrice: 58.3,
+    annualDividendPerShare: 3.07,
+    changeAmount: -0.25,
+    changePercent: -0.43,
+    dayHigh: 58.9,
+    dayLow: 57.8,
+    previousClose: 58.55,
+  },
+  SCHD: {
+    currentPrice: 27.5,
+    annualDividendPerShare: 0.82,
+    changeAmount: 0.08,
+    changePercent: 0.29,
+    dayHigh: 27.65,
+    dayLow: 27.2,
+    previousClose: 27.42,
+  },
+  VYM: {
+    currentPrice: 118.2,
+    annualDividendPerShare: 3.45,
+    changeAmount: 0.35,
+    changePercent: 0.3,
+    dayHigh: 118.9,
+    dayLow: 117.4,
+    previousClose: 117.85,
+  },
+};
+
+interface MockProfileEntry {
+  name: string;
+  type: string;
+  industry: string;
+  marketCapMillions: number;
+  sharesOutstanding: number;
+  peRatio: number;
+  eps: number;
+  payoutRatioPercent: number;
+  beta: number;
+  week52High: number;
+  week52Low: number;
+  revenueGrowthPercent: number;
+  profitMarginPercent: number;
+  operatingMarginPercent: number;
+  grossMarginPercent: number;
+  epsGrowthPercent: number;
+  dividendGrowthPercent: number;
+  debtToEquity: number;
+  currentRatio: number;
+  returnOnEquityPercent: number;
+  priceToBook: number;
+  priceToSales: number;
+  website?: string;
+}
+
+const MOCK_PROFILES: Record<string, MockProfileEntry> = {
+  AAPL: {
+    name: 'Apple Inc',
+    type: 'Common Stock',
+    industry: 'Technology Hardware',
+    marketCapMillions: 3_020_000,
+    sharesOutstanding: 15_400,
+    peRatio: 31.2,
+    eps: 6.26,
+    payoutRatioPercent: 15,
+    beta: 1.24,
+    week52High: 220.5,
+    week52Low: 164.0,
+    revenueGrowthPercent: 4.8,
+    profitMarginPercent: 26.3,
+    operatingMarginPercent: 30.1,
+    grossMarginPercent: 45.9,
+    epsGrowthPercent: 8.5,
+    dividendGrowthPercent: 4.2,
+    debtToEquity: 1.52,
+    currentRatio: 0.98,
+    returnOnEquityPercent: 147.0,
+    priceToBook: 45.2,
+    priceToSales: 7.8,
+    website: 'https://www.apple.com',
+  },
+  MSFT: {
+    name: 'Microsoft Corporation',
+    type: 'Common Stock',
+    industry: 'Software',
+    marketCapMillions: 3_120_000,
+    sharesOutstanding: 7_430,
+    peRatio: 35.8,
+    eps: 11.74,
+    payoutRatioPercent: 25,
+    beta: 0.89,
+    week52High: 450.0,
+    week52Low: 362.0,
+    revenueGrowthPercent: 15.2,
+    profitMarginPercent: 35.6,
+    operatingMarginPercent: 42.0,
+    grossMarginPercent: 68.8,
+    epsGrowthPercent: 12.4,
+    dividendGrowthPercent: 10.1,
+    debtToEquity: 0.35,
+    currentRatio: 1.66,
+    returnOnEquityPercent: 38.5,
+    priceToBook: 12.4,
+    priceToSales: 12.1,
+    website: 'https://www.microsoft.com',
+  },
+  JNJ: {
+    name: 'Johnson & Johnson',
+    type: 'Common Stock',
+    industry: 'Drug Manufacturers',
+    marketCapMillions: 375_000,
+    sharesOutstanding: 2_410,
+    peRatio: 24.5,
+    eps: 6.36,
+    payoutRatioPercent: 48,
+    beta: 0.52,
+    week52High: 168.0,
+    week52Low: 143.0,
+    revenueGrowthPercent: 5.1,
+    profitMarginPercent: 18.2,
+    operatingMarginPercent: 24.5,
+    grossMarginPercent: 68.0,
+    epsGrowthPercent: 6.2,
+    dividendGrowthPercent: 5.8,
+    debtToEquity: 0.58,
+    currentRatio: 1.12,
+    returnOnEquityPercent: 22.4,
+    priceToBook: 5.8,
+    priceToSales: 4.2,
+    website: 'https://www.jnj.com',
+  },
+  KO: {
+    name: 'The Coca-Cola Company',
+    type: 'Common Stock',
+    industry: 'Beverages',
+    marketCapMillions: 268_000,
+    sharesOutstanding: 4_310,
+    peRatio: 24.8,
+    eps: 2.52,
+    payoutRatioPercent: 77,
+    beta: 0.58,
+    week52High: 65.5,
+    week52Low: 56.0,
+    revenueGrowthPercent: 3.2,
+    profitMarginPercent: 22.8,
+    operatingMarginPercent: 28.5,
+    grossMarginPercent: 59.2,
+    epsGrowthPercent: 2.8,
+    dividendGrowthPercent: 3.5,
+    debtToEquity: 1.85,
+    currentRatio: 1.05,
+    returnOnEquityPercent: 42.1,
+    priceToBook: 10.2,
+    priceToSales: 6.1,
+    website: 'https://www.coca-colacompany.com',
+  },
+  O: {
+    name: 'Realty Income Corporation',
+    type: 'REIT',
+    industry: 'REIT Retail',
+    marketCapMillions: 48_000,
+    sharesOutstanding: 820,
+    peRatio: 54.2,
+    eps: 1.08,
+    payoutRatioPercent: 285,
+    beta: 0.72,
+    week52High: 62.0,
+    week52Low: 48.5,
+    revenueGrowthPercent: 8.4,
+    profitMarginPercent: 18.5,
+    operatingMarginPercent: 42.0,
+    grossMarginPercent: 95.0,
+    epsGrowthPercent: 4.5,
+    dividendGrowthPercent: 4.1,
+    debtToEquity: 0.72,
+    currentRatio: 1.8,
+    returnOnEquityPercent: 2.8,
+    priceToBook: 1.4,
+    priceToSales: 10.5,
+    website: 'https://www.realtyincome.com',
+  },
+  SCHD: {
+    name: 'Schwab US Dividend Equity ETF',
+    type: 'ETF',
+    industry: 'Large Blend',
+    marketCapMillions: 58_000,
+    sharesOutstanding: 2_100,
+    peRatio: 16.4,
+    eps: 1.68,
+    payoutRatioPercent: 49,
+    beta: 0.82,
+    week52High: 29.2,
+    week52Low: 24.8,
+    revenueGrowthPercent: 6.5,
+    profitMarginPercent: 12.0,
+    operatingMarginPercent: 14.0,
+    grossMarginPercent: 28.0,
+    epsGrowthPercent: 7.0,
+    dividendGrowthPercent: 9.5,
+    debtToEquity: 0.45,
+    currentRatio: 1.4,
+    returnOnEquityPercent: 18.0,
+    priceToBook: 2.6,
+    priceToSales: 2.1,
+    website: 'https://www.schwabassetmanagement.com',
+  },
+  VYM: {
+    name: 'Vanguard High Dividend Yield ETF',
+    type: 'ETF',
+    industry: 'Large Value',
+    marketCapMillions: 72_000,
+    sharesOutstanding: 610,
+    peRatio: 17.2,
+    eps: 6.87,
+    payoutRatioPercent: 50,
+    beta: 0.88,
+    week52High: 122.0,
+    week52Low: 104.0,
+    revenueGrowthPercent: 5.8,
+    profitMarginPercent: 14.2,
+    operatingMarginPercent: 16.5,
+    grossMarginPercent: 32.0,
+    epsGrowthPercent: 5.5,
+    dividendGrowthPercent: 7.2,
+    debtToEquity: 0.55,
+    currentRatio: 1.35,
+    returnOnEquityPercent: 16.5,
+    priceToBook: 2.8,
+    priceToSales: 2.4,
+    website: 'https://investor.vanguard.com',
+  },
 };
 
 @Injectable({ providedIn: 'root' })
@@ -46,10 +358,18 @@ export class StockApiService {
   private readonly apiKey = environment.finnhubApiKey;
 
   async fetchQuote(ticker: string): Promise<StockQuote> {
+    const detail = await this.fetchQuoteDetail(ticker);
+    return {
+      currentPrice: detail.currentPrice,
+      annualDividendPerShare: detail.annualDividendPerShare,
+    };
+  }
+
+  async fetchQuoteDetail(ticker: string): Promise<StockQuoteDetail> {
     const symbol = ticker.toUpperCase().trim();
 
     if (!this.apiKey) {
-      return this.getMockQuote(symbol);
+      return this.getMockQuoteDetail(symbol);
     }
 
     try {
@@ -67,13 +387,114 @@ export class StockApiService {
       ]);
 
       const annualDividendPerShare = this.estimateAnnualDividend(dividends);
+      const mock = this.getMockQuoteDetail(symbol);
 
       return {
-        currentPrice: quote.c > 0 ? quote.c : this.getMockQuote(symbol).currentPrice,
+        currentPrice: quote.c > 0 ? quote.c : mock.currentPrice,
         annualDividendPerShare,
+        changeAmount: quote.d ?? 0,
+        changePercent: quote.dp ?? 0,
+        dayHigh: quote.h > 0 ? quote.h : mock.dayHigh,
+        dayLow: quote.l > 0 ? quote.l : mock.dayLow,
+        previousClose: quote.pc > 0 ? quote.pc : mock.previousClose,
       };
     } catch {
-      return this.getMockQuote(symbol);
+      return this.getMockQuoteDetail(symbol);
+    }
+  }
+
+  async fetchProfile(ticker: string): Promise<StockProfile> {
+    const symbol = ticker.toUpperCase().trim();
+
+    if (!this.apiKey) {
+      return this.getMockProfile(symbol);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get<FinnhubProfileResponse>(
+          `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.apiKey}`,
+        ),
+      );
+
+      if (!response?.name) {
+        return this.getMockProfile(symbol);
+      }
+
+      const popular = POPULAR_STOCKS.find((s) => s.symbol === symbol);
+
+      return {
+        symbol,
+        name: response.name,
+        type: popular?.type ?? 'Common Stock',
+        sector: getSectorForTicker(symbol),
+        industry: response.finnhubIndustry || getSectorForTicker(symbol),
+        country: response.country || 'US',
+        exchange: response.exchange || 'US',
+        ipoDate: response.ipo || undefined,
+        marketCapMillions: response.marketCapitalization || 0,
+        sharesOutstanding: response.shareOutstanding || 0,
+        website: response.weburl || undefined,
+        logoUrl: response.logo || getStockLogoUrl(symbol),
+      };
+    } catch {
+      return this.getMockProfile(symbol);
+    }
+  }
+
+  async fetchFundamentals(ticker: string): Promise<StockFundamentals> {
+    const symbol = ticker.toUpperCase().trim();
+    const quote = await this.fetchQuoteDetail(symbol);
+
+    if (!this.apiKey) {
+      return this.buildMockFundamentals(symbol, quote);
+    }
+
+    try {
+      const metrics = await firstValueFrom(
+        this.http.get<FinnhubMetricResponse>(
+          `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`,
+        ),
+      );
+
+      const m = metrics?.metric ?? {};
+      const yieldFromApi = m.dividendYieldIndicatedAnnual;
+      const dividendYieldPercent =
+        yieldFromApi != null && yieldFromApi > 0
+          ? yieldFromApi
+          : quote.currentPrice > 0
+            ? (quote.annualDividendPerShare / quote.currentPrice) * 100
+            : 0;
+
+      return {
+        currentPrice: quote.currentPrice,
+        changeAmount: quote.changeAmount,
+        changePercent: quote.changePercent,
+        dayHigh: quote.dayHigh,
+        dayLow: quote.dayLow,
+        previousClose: quote.previousClose,
+        annualDividendPerShare: quote.annualDividendPerShare,
+        dividendYieldPercent,
+        peRatio: m.peAnnual,
+        eps: m.epsAnnual,
+        payoutRatioPercent: m.payoutRatioAnnual != null ? m.payoutRatioAnnual * 100 : undefined,
+        beta: m.beta,
+        week52High: m['52WeekHigh'],
+        week52Low: m['52WeekLow'],
+        revenueGrowthPercent: m.revenueGrowth3Y != null ? m.revenueGrowth3Y * 100 : undefined,
+        profitMarginPercent: m.netProfitMarginAnnual != null ? m.netProfitMarginAnnual * 100 : undefined,
+        operatingMarginPercent: m.operatingMarginAnnual != null ? m.operatingMarginAnnual * 100 : undefined,
+        grossMarginPercent: m.grossMarginAnnual != null ? m.grossMarginAnnual * 100 : undefined,
+        epsGrowthPercent: m.epsGrowth3Y != null ? m.epsGrowth3Y * 100 : undefined,
+        dividendGrowthPercent: m.dividendGrowthRate5Y != null ? m.dividendGrowthRate5Y * 100 : undefined,
+        debtToEquity: m['totalDebt/totalEquityAnnual'],
+        currentRatio: m.currentRatioAnnual,
+        returnOnEquityPercent: m.roeRfy != null ? m.roeRfy * 100 : undefined,
+        priceToBook: m.pbAnnual,
+        priceToSales: m.psAnnual,
+      };
+    } catch {
+      return this.buildMockFundamentals(symbol, quote);
     }
   }
 
@@ -171,19 +592,96 @@ export class StockApiService {
     return recent.reduce((sum, d) => sum + d.amount, 0);
   }
 
-  private getMockQuote(symbol: string): StockQuote {
+  private getMockQuoteDetail(symbol: string): StockQuoteDetail {
     if (MOCK_QUOTES[symbol]) {
       const jitter = 1 + (Math.random() * 0.02 - 0.01);
+      const base = MOCK_QUOTES[symbol];
       return {
-        currentPrice: +(MOCK_QUOTES[symbol].currentPrice * jitter).toFixed(2),
-        annualDividendPerShare: MOCK_QUOTES[symbol].annualDividendPerShare,
+        currentPrice: +(base.currentPrice * jitter).toFixed(2),
+        annualDividendPerShare: base.annualDividendPerShare,
+        changeAmount: base.changeAmount,
+        changePercent: base.changePercent,
+        dayHigh: base.dayHigh,
+        dayLow: base.dayLow,
+        previousClose: base.previousClose,
       };
     }
 
     const hash = symbol.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const price = +(50 + (hash % 200) + Math.random()).toFixed(2);
+    const dividend = +((hash % 400) / 100).toFixed(2);
     return {
-      currentPrice: +(50 + (hash % 200) + Math.random()).toFixed(2),
-      annualDividendPerShare: +((hash % 400) / 100).toFixed(2),
+      currentPrice: price,
+      annualDividendPerShare: dividend,
+      changeAmount: +((hash % 20) / 10 - 1).toFixed(2),
+      changePercent: +((hash % 20) / 10 - 1).toFixed(2),
+      dayHigh: +(price * 1.02).toFixed(2),
+      dayLow: +(price * 0.98).toFixed(2),
+      previousClose: +(price * 0.995).toFixed(2),
+    };
+  }
+
+  private getMockProfile(symbol: string): StockProfile {
+    const mock = MOCK_PROFILES[symbol];
+    const popular = POPULAR_STOCKS.find((s) => s.symbol === symbol);
+    const hash = symbol.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+
+    return {
+      symbol,
+      name: mock?.name ?? popular?.name ?? `${symbol} Corporation`,
+      type: mock?.type ?? popular?.type ?? 'Common Stock',
+      sector: getSectorForTicker(symbol),
+      industry: mock?.industry ?? getSectorForTicker(symbol),
+      country: 'US',
+      exchange: 'US',
+      ipoDate: undefined,
+      marketCapMillions: mock?.marketCapMillions ?? 10_000 + (hash % 500) * 100,
+      sharesOutstanding: mock?.sharesOutstanding ?? 500 + (hash % 2000),
+      website: mock?.website,
+      logoUrl: getStockLogoUrl(symbol),
+    };
+  }
+
+  private buildMockFundamentals(symbol: string, quote: StockQuoteDetail): StockFundamentals {
+    const mock = MOCK_PROFILES[symbol];
+    const hash = symbol.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const dividendYieldPercent =
+      quote.currentPrice > 0 ? (quote.annualDividendPerShare / quote.currentPrice) * 100 : 0;
+
+    return {
+      currentPrice: quote.currentPrice,
+      changeAmount: quote.changeAmount,
+      changePercent: quote.changePercent,
+      dayHigh: quote.dayHigh,
+      dayLow: quote.dayLow,
+      previousClose: quote.previousClose,
+      annualDividendPerShare: quote.annualDividendPerShare,
+      dividendYieldPercent,
+      peRatio: mock?.peRatio ?? 15 + (hash % 25),
+      eps: mock?.eps ?? +(quote.currentPrice / (15 + (hash % 25))).toFixed(2),
+      payoutRatioPercent: mock?.payoutRatioPercent ?? Math.min(dividendYieldPercent * 8, 90),
+      beta: mock?.beta ?? 0.6 + (hash % 80) / 100,
+      week52High: mock?.week52High ?? +(quote.currentPrice * 1.18).toFixed(2),
+      week52Low: mock?.week52Low ?? +(quote.currentPrice * 0.82).toFixed(2),
+      revenueGrowthPercent: mock?.revenueGrowthPercent ?? (hash % 20) - 2,
+      profitMarginPercent: mock?.profitMarginPercent ?? 8 + (hash % 25),
+      operatingMarginPercent: mock?.operatingMarginPercent ?? 10 + (hash % 20),
+      grossMarginPercent: mock?.grossMarginPercent ?? 25 + (hash % 30),
+      epsGrowthPercent: mock?.epsGrowthPercent ?? (hash % 15) - 1,
+      dividendGrowthPercent: mock?.dividendGrowthPercent ?? (hash % 10),
+      debtToEquity: mock?.debtToEquity ?? 0.3 + (hash % 150) / 100,
+      currentRatio: mock?.currentRatio ?? 0.8 + (hash % 120) / 100,
+      returnOnEquityPercent: mock?.returnOnEquityPercent ?? 10 + (hash % 30),
+      priceToBook: mock?.priceToBook ?? 1.5 + (hash % 80) / 10,
+      priceToSales: mock?.priceToSales ?? 1.2 + (hash % 60) / 10,
+    };
+  }
+
+  private getMockQuote(symbol: string): StockQuote {
+    const detail = this.getMockQuoteDetail(symbol);
+    return {
+      currentPrice: detail.currentPrice,
+      annualDividendPerShare: detail.annualDividendPerShare,
     };
   }
 

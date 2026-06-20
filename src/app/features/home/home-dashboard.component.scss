@@ -557,6 +557,11 @@ a.hero-card:hover .hero-link-hint {
   color: #f59e0b;
 }
 
+.nav-card-icon.research {
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
+}
+
 .nav-card-icon.holdings {
   background: var(--surface-muted);
   color: var(--text-muted);
