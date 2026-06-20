@@ -8,10 +8,19 @@ import { LoadingOverlayComponent } from './shared/components/loading-overlay.com
 import { ConfirmDialogComponent } from './shared/components/confirm-dialog.component';
 import { PageFooterComponent } from './shared/components/page-footer.component';
 
+type NavIcon =
+  | 'home'
+  | 'wealth'
+  | 'paycheck'
+  | 'plan'
+  | 'insights'
+  | 'holdings'
+  | 'settings';
+
 interface NavItem {
   path: string;
   label: string;
-  icon: string;
+  icon: NavIcon;
   exact?: boolean;
 }
 
@@ -38,13 +47,13 @@ export class AppComponent implements OnInit {
   readonly loading = this.portfolio.loading;
 
   readonly navItems: NavItem[] = [
-    { path: '/home', label: 'Home', icon: '⌂', exact: true },
-    { path: '/wealth', label: 'Wealth', icon: '◆' },
-    { path: '/paycheck', label: 'Paycheck', icon: '$' },
-    { path: '/plan', label: 'Plan', icon: '◈' },
-    { path: '/insights', label: 'Insights', icon: '◎' },
-    { path: '/holdings', label: 'Holdings', icon: '☰' },
-    { path: '/settings', label: 'Settings', icon: '⚙' },
+    { path: '/home', label: 'Home', icon: 'home', exact: true },
+    { path: '/wealth', label: 'Wealth', icon: 'wealth' },
+    { path: '/paycheck', label: 'Paycheck', icon: 'paycheck' },
+    { path: '/plan', label: 'Plan', icon: 'plan' },
+    { path: '/insights', label: 'Insights', icon: 'insights' },
+    { path: '/holdings', label: 'Holdings', icon: 'holdings' },
+    { path: '/settings', label: 'Settings', icon: 'settings' },
   ];
 
   ngOnInit(): void {
