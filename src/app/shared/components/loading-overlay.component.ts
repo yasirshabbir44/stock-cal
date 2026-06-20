@@ -22,7 +22,7 @@ import { Component, Input } from '@angular/core';
         align-items: center;
         justify-content: center;
         gap: 1rem;
-        background: rgba(15, 20, 25, 0.72);
+        background: var(--overlay-bg);
         backdrop-filter: blur(4px);
       }
 

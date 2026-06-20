@@ -3,6 +3,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 
 type SortKey = 'ticker' | 'value' | 'income';
 
@@ -21,6 +22,7 @@ interface QuickPick {
 export class HoldingsComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly route = inject(ActivatedRoute);
+  private readonly confirm = inject(ConfirmDialogService);
 
   readonly holdings = this.portfolio.holdings;
   readonly loading = this.portfolio.loading;
@@ -34,6 +36,8 @@ export class HoldingsComponent implements OnInit {
   editShares: number | null = null;
   editPrice: number | null = null;
   submitting = signal(false);
+  refreshingId = signal<string | null>(null);
+  formErrors: { ticker?: string; shares?: string; purchasePrice?: string } = {};
 
   readonly quickPicks: QuickPick[] = [
     { ticker: 'AAPL', hint: 'Growth' },
@@ -79,12 +83,25 @@ export class HoldingsComponent implements OnInit {
     document.getElementById('ticker-input')?.focus();
   }
 
-  async onSubmit(): Promise<void> {
-    if (!this.ticker.trim() || !this.shares || !this.purchasePrice) {
-      return;
+  validateForm(): boolean {
+    this.formErrors = {};
+
+    const ticker = this.ticker.trim().toUpperCase();
+    if (!ticker || !/^[A-Z]{1,5}$/.test(ticker)) {
+      this.formErrors.ticker = 'Enter a valid ticker (1–5 letters)';
+    }
+    if (!this.shares || this.shares <= 0) {
+      this.formErrors.shares = 'Shares must be greater than 0';
+    }
+    if (!this.purchasePrice || this.purchasePrice <= 0) {
+      this.formErrors.purchasePrice = 'Price must be greater than 0';
     }
 
-    if (this.shares <= 0 || this.purchasePrice <= 0) {
+    return Object.keys(this.formErrors).length === 0;
+  }
+
+  async onSubmit(): Promise<void> {
+    if (!this.validateForm()) {
       return;
     }
 
@@ -92,14 +109,15 @@ export class HoldingsComponent implements OnInit {
 
     try {
       await this.portfolio.addHolding({
-        ticker: this.ticker,
-        shares: this.shares,
-        purchasePrice: this.purchasePrice,
+        ticker: this.ticker.trim().toUpperCase(),
+        shares: this.shares!,
+        purchasePrice: this.purchasePrice!,
       });
 
       this.ticker = '';
       this.shares = null;
       this.purchasePrice = null;
+      this.formErrors = {};
     } finally {
       this.submitting.set(false);
     }
@@ -130,13 +148,29 @@ export class HoldingsComponent implements OnInit {
   }
 
   async remove(id: string, ticker: string): Promise<void> {
-    if (confirm(`Remove ${ticker} from your portfolio?`)) {
+    const confirmed = await this.confirm.confirm({
+      title: 'Remove holding',
+      message: `Remove ${ticker} from your portfolio? This cannot be undone.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+
+    if (confirmed) {
       await this.portfolio.removeHolding(id);
     }
   }
 
   async refresh(): Promise<void> {
     await this.portfolio.refreshMarketData();
+  }
+
+  async refreshOne(id: string): Promise<void> {
+    this.refreshingId.set(id);
+    try {
+      await this.portfolio.refreshSingleHolding(id);
+    } finally {
+      this.refreshingId.set(null);
+    }
   }
 
   setSort(key: SortKey): void {

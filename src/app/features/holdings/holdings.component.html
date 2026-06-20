@@ -6,7 +6,7 @@
       <p class="subtitle">Add, edit, or remove positions. Duplicate tickers merge automatically.</p>
     </div>
     <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
-      Refresh All
+      ↻ Refresh All
     </button>
   </header>
 
@@ -22,8 +22,8 @@
       }
     </div>
 
-    <form class="add-form" (ngSubmit)="onSubmit()">
-      <label>
+    <form class="add-form" (ngSubmit)="onSubmit()" novalidate>
+      <label [class.has-error]="formErrors.ticker">
         Ticker
         <input
           id="ticker-input"
@@ -31,12 +31,14 @@
           name="ticker"
           [(ngModel)]="ticker"
           placeholder="e.g. AAPL"
-          required
           autocomplete="off"
           style="text-transform: uppercase"
         />
+        @if (formErrors.ticker) {
+          <span class="field-error">{{ formErrors.ticker }}</span>
+        }
       </label>
-      <label>
+      <label [class.has-error]="formErrors.shares">
         Shares
         <input
           type="number"
@@ -45,10 +47,12 @@
           placeholder="100"
           min="0.0001"
           step="any"
-          required
         />
+        @if (formErrors.shares) {
+          <span class="field-error">{{ formErrors.shares }}</span>
+        }
       </label>
-      <label>
+      <label [class.has-error]="formErrors.purchasePrice">
         Purchase Price
         <input
           type="number"
@@ -57,11 +61,13 @@
           placeholder="150.00"
           min="0.01"
           step="0.01"
-          required
         />
+        @if (formErrors.purchasePrice) {
+          <span class="field-error">{{ formErrors.purchasePrice }}</span>
+        }
       </label>
       <button type="submit" class="btn-primary" [disabled]="submitting() || loading()">
-        {{ submitting() ? 'Adding…' : 'Add Stock' }}
+        {{ submitting() ? 'Adding…' : '+ Add Stock' }}
       </button>
     </form>
 
@@ -130,6 +136,16 @@
                     {{ holding.annualDividendPerShare * holding.shares | currency: 'USD' : 'symbol' : '1.2-2' }}
                   </td>
                   <td class="actions">
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      (click)="refreshOne(holding.id)"
+                      [disabled]="loading()"
+                      [title]="'Refresh ' + holding.ticker"
+                      [attr.aria-label]="'Refresh ' + holding.ticker"
+                    >
+                      {{ refreshingId() === holding.id ? '…' : '↻' }}
+                    </button>
                     <button type="button" class="btn-secondary btn-sm" (click)="startEdit(holding.id, holding.shares, holding.purchasePrice)">
                       Edit
                     </button>
@@ -151,7 +167,7 @@
   } @else {
     <div class="empty-state">
       <h2>Start your portfolio</h2>
-      <p>Tap a quick-add chip above or enter a ticker manually.</p>
+      <p>Tap a quick-add chip above or enter a ticker manually to get started.</p>
     </div>
   }
 </section>

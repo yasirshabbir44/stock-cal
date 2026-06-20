@@ -94,3 +94,34 @@ label {
 .btn-danger-solid:hover {
   opacity: 0.9;
 }
+
+.theme-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.theme-option {
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.theme-option.active {
+  border-color: var(--accent-wealth);
+  background: var(--accent-wealth-muted);
+  color: var(--accent-wealth);
+}
+
+.save-status {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  align-self: center;
+  padding-bottom: 0.25rem;
+}

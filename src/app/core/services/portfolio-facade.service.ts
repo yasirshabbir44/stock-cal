@@ -173,6 +173,47 @@ export class PortfolioFacadeService {
     this.toast.info(`${holding.ticker} removed`);
   }
 
+  async refreshSingleHolding(id: string): Promise<void> {
+    const holding = this.holdings().find((h) => h.id === id);
+    if (!holding) {
+      return;
+    }
+
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      const quote = await this.stockApi.fetchQuote(holding.ticker);
+      const schedules = await this.stockApi.fetchUpcomingDividends(holding.ticker);
+
+      const updated: Holding = {
+        ...holding,
+        currentPrice: quote.currentPrice,
+        annualDividendPerShare: quote.annualDividendPerShare,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      await this.db.saveHolding(updated);
+      await this.db.replaceDividendSchedulesForTicker(holding.ticker, schedules);
+
+      this.holdings.update((list) => list.map((h) => (h.id === id ? updated : h)));
+      this.dividendSchedules.update((list) => [
+        ...list.filter((s) => s.ticker !== holding.ticker),
+        ...schedules,
+      ]);
+
+      await this.recordSnapshot();
+      this.refreshMetrics();
+      this.toast.success(`${holding.ticker} refreshed`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh holding';
+      this.error.set(message);
+      this.toast.error(message);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
   async refreshMarketData(showToast = true): Promise<void> {
     const currentHoldings = this.holdings();
     if (currentHoldings.length === 0) {
@@ -221,7 +262,7 @@ export class PortfolioFacadeService {
     }
   }
 
-  async updateMonthlyIncomeGoal(goal: number): Promise<void> {
+  async updateMonthlyIncomeGoal(goal: number, showToast = true): Promise<void> {
     const settings: UserSettings = {
       ...this.settings(),
       monthlyIncomeGoal: Math.max(0, goal),
@@ -229,7 +270,9 @@ export class PortfolioFacadeService {
 
     await this.db.saveSettings(settings);
     this.settings.set(settings);
-    this.toast.success('Income goal saved');
+    if (showToast) {
+      this.toast.success('Income goal saved');
+    }
   }
 
   async exportData(): Promise<PortfolioExport> {

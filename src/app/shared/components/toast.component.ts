@@ -26,6 +26,14 @@ import { ToastService } from '../../core/services/toast.service';
         max-width: min(360px, calc(100vw - 2rem));
       }
 
+      @media (max-width: 768px) {
+        .toast-container {
+          bottom: calc(4.5rem + env(safe-area-inset-bottom));
+          left: 1rem;
+          right: 1rem;
+        }
+      }
+
       .toast {
         padding: 0.875rem 1rem;
         border-radius: 10px;
