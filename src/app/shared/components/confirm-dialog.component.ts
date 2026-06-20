@@ -82,6 +82,27 @@ import { ConfirmDialogService } from '../../core/services/confirm-dialog.service
         background: var(--danger);
         color: white;
       }
+
+      @media (max-width: 768px) {
+        .backdrop {
+          align-items: flex-end;
+          padding: 0;
+        }
+
+        .modal {
+          width: 100%;
+          border-radius: 16px 16px 0 0;
+          padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        }
+
+        .actions {
+          flex-direction: column-reverse;
+        }
+
+        .actions button {
+          width: 100%;
+        }
+      }
     `,
   ],
 })

@@ -184,6 +184,30 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
         gap: 0.5rem;
         margin-top: 0.5rem;
       }
+
+      @media (max-width: 768px) {
+        .backdrop {
+          align-items: flex-end;
+          padding: 0;
+        }
+
+        .modal {
+          width: 100%;
+          max-height: 92dvh;
+          overflow-y: auto;
+          border-radius: 16px 16px 0 0;
+          padding: 1.25rem;
+          padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+        }
+
+        .form-actions {
+          flex-direction: column-reverse;
+        }
+
+        .form-actions button {
+          width: 100%;
+        }
+      }
     `,
   ],
 })

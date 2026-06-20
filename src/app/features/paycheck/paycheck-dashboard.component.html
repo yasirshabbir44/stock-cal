@@ -83,7 +83,7 @@
       </div>
       <app-chart type="line" [data]="projectionChart()" [options]="projectionOptions" />
       <div class="projection-table-wrap">
-        <table class="projection-table">
+        <table class="projection-table responsive-table">
           <thead>
             <tr>
               <th>Year</th>
@@ -94,9 +94,9 @@
           <tbody>
             @for (row of incomeProjection(); track row.year) {
               <tr>
-                <td>{{ row.year }}</td>
-                <td>{{ row.annualIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                <td>{{ row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td data-label="Year">{{ row.year }}</td>
+                <td data-label="Annual Income">{{ row.annualIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td data-label="Monthly Income">{{ row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
               </tr>
             }
           </tbody>
@@ -130,7 +130,7 @@
     <div class="panel">
       <h2>Income by Holding</h2>
       <div class="table-wrap">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Ticker</th>
@@ -143,11 +143,11 @@
           <tbody>
             @for (item of m.holdings; track item.holding.id) {
               <tr>
-                <td class="ticker">{{ item.holding.ticker }}</td>
-                <td>{{ item.holding.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
-                <td>{{ item.holding.shares | number: '1.0-4' }}</td>
-                <td>{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td>{{ item.yieldOnCostPercent | number: '1.2-2' }}%</td>
+                <td class="ticker" data-label="Ticker">{{ item.holding.ticker }}</td>
+                <td data-label="DPS">{{ item.holding.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                <td data-label="Shares">{{ item.holding.shares | number: '1.0-4' }}</td>
+                <td data-label="Annual Income">{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td data-label="Yield on Cost">{{ item.yieldOnCostPercent | number: '1.2-2' }}%</td>
               </tr>
             }
           </tbody>

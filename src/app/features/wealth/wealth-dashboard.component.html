@@ -54,7 +54,7 @@
     <div class="panel">
       <h2>Holdings Breakdown</h2>
       <div class="table-wrap">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Ticker</th>
@@ -68,14 +68,14 @@
           <tbody>
             @for (item of m.holdings; track item.holding.id) {
               <tr>
-                <td class="ticker">{{ item.holding.ticker }}</td>
-                <td>{{ item.holding.shares | number: '1.0-4' }}</td>
-                <td>{{ item.holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td>{{ item.assetValue | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td [class.positive]="item.unrealizedGainLoss >= 0" [class.negative]="item.unrealizedGainLoss < 0">
+                <td class="ticker" data-label="Ticker">{{ item.holding.ticker }}</td>
+                <td data-label="Shares">{{ item.holding.shares | number: '1.0-4' }}</td>
+                <td data-label="Price">{{ item.holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td data-label="Value">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td data-label="P&L" [class.positive]="item.unrealizedGainLoss >= 0" [class.negative]="item.unrealizedGainLoss < 0">
                   {{ item.unrealizedGainLoss | currency: 'USD' : 'symbol' : '1.2-2' }}
                 </td>
-                <td [class.positive]="item.assetGrowthPercent >= 0" [class.negative]="item.assetGrowthPercent < 0">
+                <td data-label="Growth" [class.positive]="item.assetGrowthPercent >= 0" [class.negative]="item.assetGrowthPercent < 0">
                   {{ item.assetGrowthPercent | number: '1.2-2' }}%
                 </td>
               </tr>

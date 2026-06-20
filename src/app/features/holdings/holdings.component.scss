@@ -221,3 +221,45 @@ th {
 .empty-state {
   /* inherited from global styles */
 }
+
+@media (max-width: 768px) {
+  .add-form {
+    grid-template-columns: 1fr;
+  }
+
+  .add-form .btn-primary {
+    width: 100%;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .sort-group {
+    flex-wrap: wrap;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .inline-input {
+    max-width: none;
+  }
+
+  .ticker-cell small {
+    max-width: 140px;
+  }
+}

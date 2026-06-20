@@ -161,7 +161,7 @@
 
     @if (watchlist().length > 0) {
       <div class="table-wrap">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Ticker</th>
@@ -174,21 +174,21 @@
           <tbody>
             @for (item of watchlist(); track item.id) {
               <tr>
-                <td>
+                <td data-label="Ticker">
                   <span class="ticker-cell">
                     <app-stock-icon [symbol]="item.ticker" [logoUrl]="item.logoUrl" size="sm" />
                     {{ item.ticker }}
                   </span>
                 </td>
-                <td>{{ item.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td>
+                <td data-label="Price">{{ item.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td data-label="Yield">
                   @if (item.currentPrice > 0) {
                     {{ (item.annualDividendPerShare / item.currentPrice) * 100 | number: '1.2-2' }}%
                   } @else {
                     —
                   }
                 </td>
-                <td>
+                <td data-label="Target">
                   @if (item.targetPrice) {
                     {{ item.targetPrice | currency: 'USD' : 'symbol' : '1.2-2' }}
                     @if (targetDistance(item); as dist) {
@@ -200,7 +200,7 @@
                     —
                   }
                 </td>
-                <td>
+                <td class="actions">
                   <button type="button" class="btn-danger btn-sm" (click)="removeFromWatchlist(item.id)">Remove</button>
                 </td>
               </tr>
