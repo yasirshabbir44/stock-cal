@@ -4,6 +4,7 @@ import { DBSchema, IDBPDatabase, openDB } from 'idb';
 import { Holding } from '../models/holding.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
 import { PortfolioSnapshot } from '../models/portfolio-snapshot.model';
+import { WatchlistItem } from '../models/watchlist-item.model';
 import { DEFAULT_SETTINGS, PortfolioExport, UserSettings } from '../models/user-settings.model';
 
 interface StockCalDB extends DBSchema {
@@ -26,10 +27,15 @@ interface StockCalDB extends DBSchema {
     key: string;
     value: UserSettings;
   };
+  watchlist: {
+    key: string;
+    value: WatchlistItem;
+    indexes: { 'by-ticker': string };
+  };
 }
 
 const DB_NAME = 'stock-cal';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 @Injectable({ providedIn: 'root' })
 export class PortfolioDbService {
@@ -58,6 +64,11 @@ export class PortfolioDbService {
 
           if (oldVersion < 2 && !db.objectStoreNames.contains('settings')) {
             db.createObjectStore('settings', { keyPath: 'id' });
+          }
+
+          if (oldVersion < 3 && !db.objectStoreNames.contains('watchlist')) {
+            const watchlistStore = db.createObjectStore('watchlist', { keyPath: 'id' });
+            watchlistStore.createIndex('by-ticker', 'ticker');
           }
         },
       });
@@ -135,28 +146,45 @@ export class PortfolioDbService {
     await db.put('settings', settings);
   }
 
+  async getAllWatchlistItems(): Promise<WatchlistItem[]> {
+    const db = await this.getDb();
+    return db.getAll('watchlist');
+  }
+
+  async saveWatchlistItem(item: WatchlistItem): Promise<void> {
+    const db = await this.getDb();
+    await db.put('watchlist', item);
+  }
+
+  async deleteWatchlistItem(id: string): Promise<void> {
+    const db = await this.getDb();
+    await db.delete('watchlist', id);
+  }
+
   async exportPortfolio(): Promise<PortfolioExport> {
-    const [holdings, dividendSchedules, portfolioSnapshots, settings] = await Promise.all([
+    const [holdings, dividendSchedules, portfolioSnapshots, settings, watchlist] = await Promise.all([
       this.getAllHoldings(),
       this.getAllDividendSchedules(),
       this.getPortfolioSnapshots(),
       this.getSettings(),
+      this.getAllWatchlistItems(),
     ]);
 
     return {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       holdings,
       dividendSchedules,
       portfolioSnapshots,
       settings,
+      watchlist,
     };
   }
 
   async importPortfolio(data: PortfolioExport): Promise<void> {
     const db = await this.getDb();
     const tx = db.transaction(
-      ['holdings', 'dividendSchedules', 'portfolioSnapshots', 'settings'],
+      ['holdings', 'dividendSchedules', 'portfolioSnapshots', 'settings', 'watchlist'],
       'readwrite',
     );
 
@@ -164,6 +192,7 @@ export class PortfolioDbService {
       tx.objectStore('holdings').clear(),
       tx.objectStore('dividendSchedules').clear(),
       tx.objectStore('portfolioSnapshots').clear(),
+      tx.objectStore('watchlist').clear(),
     ]);
 
     for (const holding of data.holdings) {
@@ -175,6 +204,9 @@ export class PortfolioDbService {
     for (const snapshot of data.portfolioSnapshots) {
       await tx.objectStore('portfolioSnapshots').put(snapshot);
     }
+    for (const item of data.watchlist ?? []) {
+      await tx.objectStore('watchlist').put(item);
+    }
     await tx.objectStore('settings').put(data.settings ?? { ...DEFAULT_SETTINGS });
     await tx.done;
   }
@@ -182,7 +214,7 @@ export class PortfolioDbService {
   async clearAll(): Promise<void> {
     const db = await this.getDb();
     const tx = db.transaction(
-      ['holdings', 'dividendSchedules', 'portfolioSnapshots', 'settings'],
+      ['holdings', 'dividendSchedules', 'portfolioSnapshots', 'settings', 'watchlist'],
       'readwrite',
     );
 
@@ -190,6 +222,7 @@ export class PortfolioDbService {
       tx.objectStore('holdings').clear(),
       tx.objectStore('dividendSchedules').clear(),
       tx.objectStore('portfolioSnapshots').clear(),
+      tx.objectStore('watchlist').clear(),
       tx.objectStore('settings').put({ ...DEFAULT_SETTINGS }),
       tx.done,
     ]);

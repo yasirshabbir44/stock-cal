@@ -59,6 +59,28 @@
       <a routerLink="/settings" class="goal-link">Adjust goal →</a>
     </div>
 
+    @if (insights(); as ins) {
+      @if (ins.alerts.length > 0) {
+        <div class="panel insights-preview">
+          <div class="insights-preview-header">
+            <h2>Portfolio Alerts</h2>
+            <span class="health-pill" [class.good]="ins.healthScore >= 65" [class.warn]="ins.healthScore < 65">
+              Score {{ ins.healthScore }} · {{ ins.healthLabel }}
+            </span>
+          </div>
+          <ul class="mini-alerts">
+            @for (alert of ins.alerts.slice(0, 2); track alert.id) {
+              <li [class]="'alert-' + alert.severity">
+                <strong>{{ alert.title }}</strong>
+                <span>{{ alert.message }}</span>
+              </li>
+            }
+          </ul>
+          <a routerLink="/insights" class="goal-link">View full analysis →</a>
+        </div>
+      }
+    }
+
     <div class="two-col">
       <div class="panel chart-panel">
         <h2>Asset Allocation</h2>
@@ -89,6 +111,7 @@
     <div class="quick-nav">
       <a routerLink="/wealth" class="quick-link">View Wealth Dashboard →</a>
       <a routerLink="/paycheck" class="quick-link">View Income Dashboard →</a>
+      <a routerLink="/insights" class="quick-link">Portfolio Insights →</a>
       <a routerLink="/holdings" class="quick-link">Manage Holdings →</a>
     </div>
   } @else {
@@ -105,6 +128,10 @@
         <div class="feature-item">
           <strong>Paycheck</strong>
           <span>Monitor dividend income</span>
+        </div>
+        <div class="feature-item">
+          <strong>Insights</strong>
+          <span>Health score &amp; watchlist</span>
         </div>
         <div class="feature-item">
           <strong>Private</strong>

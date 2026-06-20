@@ -164,3 +164,69 @@ th {
   margin: 0;
   color: var(--text-muted);
 }
+
+.projection-panel .panel-desc {
+  margin: -0.5rem 0 0;
+}
+
+.projection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.growth-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 200px;
+}
+
+.growth-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.growth-input input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent-income);
+}
+
+.growth-input span {
+  font-weight: 700;
+  color: var(--accent-income);
+  min-width: 4rem;
+  text-align: right;
+}
+
+.projection-table-wrap {
+  margin-top: 1.25rem;
+  overflow-x: auto;
+}
+
+.projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.projection-table th,
+.projection-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.projection-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}

@@ -4,6 +4,7 @@ export interface HoldingMetrics {
   holding: Holding;
   assetValue: number;
   costBasis: number;
+  unrealizedGainLoss: number;
   assetGrowthPercent: number;
   annualDividendIncome: number;
   yieldOnCostPercent: number;
@@ -12,6 +13,7 @@ export interface HoldingMetrics {
 export interface PortfolioMetrics {
   totalPortfolioValue: number;
   totalCostBasis: number;
+  totalUnrealizedGainLoss: number;
   totalAssetGrowthPercent: number;
   totalAnnualDividendIncome: number;
   projectedMonthlyIncome: number;

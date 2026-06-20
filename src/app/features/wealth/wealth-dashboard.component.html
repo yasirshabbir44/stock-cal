@@ -32,6 +32,14 @@
         [negative]="m.totalAssetGrowthPercent < 0"
         subtitle="(Current Value − Cost Basis) / Cost Basis"
       />
+      <app-metric-card
+        label="Unrealized P&L"
+        [value]="m.totalUnrealizedGainLoss"
+        [isCurrency]="true"
+        [positive]="m.totalUnrealizedGainLoss >= 0"
+        [negative]="m.totalUnrealizedGainLoss < 0"
+        subtitle="Market value minus cost basis"
+      />
     </div>
 
     <div class="panel chart-panel">
@@ -53,6 +61,7 @@
               <th>Shares</th>
               <th>Price</th>
               <th>Value</th>
+              <th>P&L</th>
               <th>Growth</th>
             </tr>
           </thead>
@@ -63,6 +72,9 @@
                 <td>{{ item.holding.shares | number: '1.0-4' }}</td>
                 <td>{{ item.holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
                 <td>{{ item.assetValue | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td [class.positive]="item.unrealizedGainLoss >= 0" [class.negative]="item.unrealizedGainLoss < 0">
+                  {{ item.unrealizedGainLoss | currency: 'USD' : 'symbol' : '1.2-2' }}
+                </td>
                 <td [class.positive]="item.assetGrowthPercent >= 0" [class.negative]="item.assetGrowthPercent < 0">
                   {{ item.assetGrowthPercent | number: '1.2-2' }}%
                 </td>
