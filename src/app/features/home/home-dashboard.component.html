@@ -1,20 +1,28 @@
 <section class="dashboard">
   <header class="dashboard-header">
-    <div>
+    <div class="header-copy">
       <p class="eyebrow">Overview</p>
       <h1>Your Financial Snapshot</h1>
       <p class="subtitle">
         @if (lastUpdated(); as updated) {
-          Last updated {{ updated | date: 'medium' }}
+          <span class="updated-badge">Updated {{ updated | date: 'MMM d, y · h:mm a' }}</span>
         } @else {
           Add holdings to see your wealth and income at a glance.
         }
       </p>
     </div>
     <div class="header-actions">
-      <button type="button" class="btn-primary" (click)="openQuickAdd()">+ Add Stock</button>
+      <button type="button" class="btn-primary" (click)="openQuickAdd()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Add Stock
+      </button>
       <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
-        ↻ Refresh
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Refresh
       </button>
     </div>
   </header>
@@ -22,23 +30,46 @@
   @if (metrics(); as m) {
     <div class="hero-cards">
       <a routerLink="/wealth" class="hero-card wealth">
-        <span class="hero-icon">◆</span>
+        <div class="hero-card-top">
+          <span class="hero-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="hero-link-hint">View details</span>
+        </div>
         <span class="hero-label">Total Wealth</span>
         <span class="hero-value">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
         <span class="hero-meta" [class.positive]="m.totalAssetGrowthPercent >= 0" [class.negative]="m.totalAssetGrowthPercent < 0">
-          {{ m.totalAssetGrowthPercent | number: '1.2-2' }}% growth
+          {{ m.totalAssetGrowthPercent >= 0 ? '+' : '' }}{{ m.totalAssetGrowthPercent | number: '1.2-2' }}% all-time growth
         </span>
       </a>
 
       <a routerLink="/paycheck" class="hero-card income">
-        <span class="hero-icon">$</span>
+        <div class="hero-card-top">
+          <span class="hero-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
+              <path d="M6 14h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="hero-link-hint">View details</span>
+        </div>
         <span class="hero-label">Monthly Paycheck</span>
         <span class="hero-value">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
         <span class="hero-meta">{{ m.portfolioDividendYieldPercent | number: '1.2-2' }}% portfolio yield</span>
       </a>
 
       <div class="hero-card summary">
-        <span class="hero-icon">#</span>
+        <div class="hero-card-top">
+          <span class="hero-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </div>
         <span class="hero-label">Holdings</span>
         <span class="hero-value">{{ holdings().length }}</span>
         <span class="hero-meta">{{ m.totalCostBasis | currency: 'USD' : 'symbol' : '1.0-0' }} invested</span>
@@ -49,21 +80,31 @@
       <div class="goal-header">
         <div>
           <h2>Income Goal Progress</h2>
-          <p>Target: {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/month</p>
+          <p class="goal-summary">
+            <span class="goal-current">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+            <span class="goal-separator">of</span>
+            <span>{{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo target</span>
+          </p>
         </div>
-        <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
+        <div class="goal-percent-wrap">
+          <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
+          <span class="goal-percent-label">complete</span>
+        </div>
       </div>
-      <div class="progress-bar">
+      <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="incomeGoalProgress()" aria-valuemin="0" aria-valuemax="100">
         <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
       </div>
-      <a routerLink="/settings" class="goal-link">Adjust goal →</a>
+      <a routerLink="/settings" class="panel-action-link">Adjust goal in settings</a>
     </div>
 
     @if (insights(); as ins) {
       @if (ins.alerts.length > 0) {
         <div class="panel insights-preview">
-          <div class="insights-preview-header">
-            <h2>Portfolio Alerts</h2>
+          <div class="panel-header">
+            <div>
+              <h2>Portfolio Alerts</h2>
+              <p class="panel-desc">Items that may need your attention.</p>
+            </div>
             <span class="health-pill" [class.good]="ins.healthScore >= 65" [class.warn]="ins.healthScore < 65">
               Score {{ ins.healthScore }} · {{ ins.healthLabel }}
             </span>
@@ -76,14 +117,19 @@
               </li>
             }
           </ul>
-          <a routerLink="/insights" class="goal-link">View full analysis →</a>
+          <a routerLink="/insights" class="panel-action-link">View full analysis</a>
         </div>
       }
     }
 
     <div class="two-col">
       <div class="panel chart-panel">
-        <h2>Asset Allocation</h2>
+        <div class="panel-header">
+          <div>
+            <h2>Asset Allocation</h2>
+            <p class="panel-desc">How your portfolio is distributed across holdings.</p>
+          </div>
+        </div>
         @if (allocationChart().labels?.length) {
           <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions()" />
         } @else {
@@ -91,32 +137,109 @@
         }
       </div>
 
-      <div class="panel">
-        <h2>Top Holdings</h2>
-        <ul class="top-list">
-          @for (item of m.holdings.slice(0, 5); track item.holding.id) {
-            <li>
-              <span class="ticker-cell">
-                <app-stock-icon [symbol]="item.holding.ticker" [logoUrl]="item.holding.logoUrl" size="sm" />
-                <span class="ticker">{{ item.holding.ticker }}</span>
-              </span>
-              <span class="value">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
-              <span class="income">+{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}/yr</span>
-            </li>
+      <div class="panel holdings-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Top Holdings</h2>
+            <p class="panel-desc">Your largest positions by market value.</p>
+          </div>
+          @if (holdings().length > 5) {
+            <a routerLink="/holdings" class="panel-action-link">View all</a>
           }
-        </ul>
+        </div>
+        <div class="table-wrap">
+          <table class="holdings-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th class="col-num">Value</th>
+                <th class="col-num">Weight</th>
+                <th class="col-num">Income/yr</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of topHoldings(); track item.holding.id) {
+                <tr>
+                  <td>
+                    <span class="ticker-cell">
+                      <app-stock-icon [symbol]="item.holding.ticker" [logoUrl]="item.holding.logoUrl" size="sm" />
+                      <span class="ticker">{{ item.holding.ticker }}</span>
+                    </span>
+                  </td>
+                  <td class="col-num">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                  <td class="col-num">{{ item.allocationPercent | number: '1.1-1' }}%</td>
+                  <td class="col-num income">{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="quick-nav">
-      <a routerLink="/wealth" class="quick-link">View Wealth Dashboard →</a>
-      <a routerLink="/paycheck" class="quick-link">View Income Dashboard →</a>
-      <a routerLink="/insights" class="quick-link">Portfolio Insights →</a>
-      <a routerLink="/holdings" class="quick-link">Manage Holdings →</a>
-    </div>
+    <section class="nav-section">
+      <h2 class="section-title">Explore</h2>
+      <div class="nav-cards">
+        <a routerLink="/wealth" class="nav-card">
+          <span class="nav-card-icon wealth" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="nav-card-body">
+            <strong>Wealth Dashboard</strong>
+            <span>Track capital growth and net worth over time</span>
+          </span>
+          <span class="nav-card-arrow" aria-hidden="true">→</span>
+        </a>
+        <a routerLink="/paycheck" class="nav-card">
+          <span class="nav-card-icon income" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </span>
+          <span class="nav-card-body">
+            <strong>Income Dashboard</strong>
+            <span>Monitor dividend income and upcoming payouts</span>
+          </span>
+          <span class="nav-card-arrow" aria-hidden="true">→</span>
+        </a>
+        <a routerLink="/insights" class="nav-card">
+          <span class="nav-card-icon insights" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="nav-card-body">
+            <strong>Portfolio Insights</strong>
+            <span>Health score, alerts, and sector breakdown</span>
+          </span>
+          <span class="nav-card-arrow" aria-hidden="true">→</span>
+        </a>
+        <a routerLink="/holdings" class="nav-card">
+          <span class="nav-card-icon holdings" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="nav-card-body">
+            <strong>Manage Holdings</strong>
+            <span>Add, edit, and remove your positions</span>
+          </span>
+          <span class="nav-card-arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
   } @else {
     <div class="welcome-panel">
-      <div class="welcome-icon">📈</div>
+      <div class="welcome-icon" aria-hidden="true">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <h2>Welcome to StockCal</h2>
       <p>Track your capital growth and dividend income in one place — all stored privately on your device.</p>
 
@@ -140,7 +263,7 @@
       </div>
 
       <div class="quick-start">
-        <h3>Quick start — pick a popular stock:</h3>
+        <h3>Quick start — pick a popular stock</h3>
         <div class="chip-row">
           @for (stock of quickStartStocks; track stock.symbol) {
             <button type="button" class="chip chip-with-icon" (click)="openQuickAdd(stock.symbol)">

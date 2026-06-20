@@ -31,6 +31,21 @@ export class HomeDashboardComponent implements OnInit {
   readonly quickAddTicker = signal('');
   readonly quickStartStocks = POPULAR_STOCKS.slice(0, 5);
 
+  readonly topHoldings = computed(() => {
+    const metrics = this.metrics();
+    if (!metrics) return [];
+
+    const total = metrics.totalPortfolioValue;
+    return metrics.holdings
+      .slice()
+      .sort((a, b) => b.assetValue - a.assetValue)
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        allocationPercent: total > 0 ? (item.assetValue / total) * 100 : 0,
+      }));
+  });
+
   readonly allocationChart = computed<ChartData<'doughnut'>>(() => {
     const allocation = this.portfolio.allocationByTicker();
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
