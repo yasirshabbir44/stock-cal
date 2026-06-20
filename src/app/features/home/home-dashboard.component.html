@@ -1,0 +1,99 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Overview</p>
+      <h1>Your Financial Snapshot</h1>
+      <p class="subtitle">
+        @if (lastUpdated(); as updated) {
+          Last updated {{ updated | date: 'medium' }}
+        } @else {
+          Add holdings to see your wealth and income at a glance.
+        }
+      </p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/holdings" class="btn-primary">+ Add Stock</a>
+      <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (metrics(); as m) {
+    <div class="hero-cards">
+      <a routerLink="/wealth" class="hero-card wealth">
+        <span class="hero-label">Total Wealth</span>
+        <span class="hero-value">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+        <span class="hero-meta" [class.positive]="m.totalAssetGrowthPercent >= 0" [class.negative]="m.totalAssetGrowthPercent < 0">
+          {{ m.totalAssetGrowthPercent | number: '1.2-2' }}% growth
+        </span>
+      </a>
+
+      <a routerLink="/paycheck" class="hero-card income">
+        <span class="hero-label">Monthly Paycheck</span>
+        <span class="hero-value">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+        <span class="hero-meta">{{ m.portfolioDividendYieldPercent | number: '1.2-2' }}% portfolio yield</span>
+      </a>
+    </div>
+
+    <div class="panel goal-panel">
+      <div class="goal-header">
+        <div>
+          <h2>Income Goal Progress</h2>
+          <p>Target: {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/month</p>
+        </div>
+        <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
+      </div>
+      <a routerLink="/settings" class="goal-link">Adjust goal →</a>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h2>Asset Allocation</h2>
+        @if (allocationChart().labels?.length) {
+          <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions" />
+        }
+      </div>
+
+      <div class="panel">
+        <h2>Top Holdings</h2>
+        <ul class="top-list">
+          @for (item of m.holdings.slice(0, 5); track item.holding.id) {
+            <li>
+              <span class="ticker">{{ item.holding.ticker }}</span>
+              <span class="value">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+              <span class="income">+{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}/yr</span>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+
+    <div class="quick-nav">
+      <a routerLink="/wealth" class="quick-link">View Wealth Dashboard →</a>
+      <a routerLink="/paycheck" class="quick-link">View Income Dashboard →</a>
+      <a routerLink="/holdings" class="quick-link">Manage Holdings →</a>
+    </div>
+  } @else {
+    <div class="welcome-panel">
+      <h2>Welcome to StockCal</h2>
+      <p>Track your capital growth and dividend income in one place — all stored privately on your device.</p>
+
+      <div class="quick-start">
+        <h3>Quick start — tap a popular stock:</h3>
+        <div class="chip-row">
+          <a routerLink="/holdings" [queryParams]="{ ticker: 'AAPL' }" class="chip">AAPL</a>
+          <a routerLink="/holdings" [queryParams]="{ ticker: 'MSFT' }" class="chip">MSFT</a>
+          <a routerLink="/holdings" [queryParams]="{ ticker: 'SCHD' }" class="chip">SCHD</a>
+          <a routerLink="/holdings" [queryParams]="{ ticker: 'O' }" class="chip">O</a>
+          <a routerLink="/holdings" [queryParams]="{ ticker: 'KO' }" class="chip">KO</a>
+        </div>
+      </div>
+
+      <a routerLink="/holdings" class="btn-primary btn-large">Add Your First Stock</a>
+    </div>
+  }
+</section>

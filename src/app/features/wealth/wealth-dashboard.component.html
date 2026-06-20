@@ -1,0 +1,81 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">The Engine</p>
+      <h1>Wealth Dashboard</h1>
+      <p class="subtitle">Track capital growth and net worth over time.</p>
+    </div>
+    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading()">
+      Refresh Prices
+    </button>
+  </header>
+
+  @if (metrics(); as m) {
+    <div class="metrics-grid">
+      <app-metric-card
+        label="Total Portfolio Value"
+        [value]="m.totalPortfolioValue"
+        [isCurrency]="true"
+        subtitle="Current Price × Shares"
+      />
+      <app-metric-card
+        label="Total Cost Basis"
+        [value]="m.totalCostBasis"
+        [isCurrency]="true"
+        subtitle="Original capital invested"
+      />
+      <app-metric-card
+        label="Asset Growth"
+        [value]="m.totalAssetGrowthPercent"
+        [isPercent]="true"
+        [positive]="m.totalAssetGrowthPercent >= 0"
+        [negative]="m.totalAssetGrowthPercent < 0"
+        subtitle="(Current Value − Cost Basis) / Cost Basis"
+      />
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>Portfolio Value Over Time</h2>
+      @if (snapshots().length > 0) {
+        <app-chart type="line" [data]="chartData()" [options]="chartOptions" />
+      } @else {
+        <p class="empty-chart">Add holdings and refresh prices to start tracking value history.</p>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Holdings Breakdown</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Shares</th>
+              <th>Price</th>
+              <th>Value</th>
+              <th>Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of m.holdings; track item.holding.id) {
+              <tr>
+                <td class="ticker">{{ item.holding.ticker }}</td>
+                <td>{{ item.holding.shares | number: '1.0-4' }}</td>
+                <td>{{ item.holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td>{{ item.assetValue | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td [class.positive]="item.assetGrowthPercent >= 0" [class.negative]="item.assetGrowthPercent < 0">
+                  {{ item.assetGrowthPercent | number: '1.2-2' }}%
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <h2>No holdings yet</h2>
+      <p>Add your first stock from the Holdings page to start tracking wealth.</p>
+    </div>
+  }
+</section>

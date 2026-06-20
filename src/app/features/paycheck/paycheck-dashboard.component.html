@@ -1,0 +1,119 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">The Paycheck</p>
+      <h1>Income Dashboard</h1>
+      <p class="subtitle">Track passive income and upcoming dividend payouts.</p>
+    </div>
+  </header>
+
+  @if (metrics(); as m) {
+    <div class="panel goal-panel">
+      <div class="goal-header">
+        <div>
+          <h2>Monthly Income Goal</h2>
+          <p>
+            {{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}
+            of {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }} target
+          </p>
+        </div>
+        <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <app-metric-card
+        label="Projected Annual Income"
+        [value]="m.totalAnnualDividendIncome"
+        [isCurrency]="true"
+        subtitle="DPS × Shares (all holdings)"
+      />
+      <app-metric-card
+        label="Projected Monthly Income"
+        [value]="m.projectedMonthlyIncome"
+        [isCurrency]="true"
+        subtitle="Annual income ÷ 12"
+      />
+      <app-metric-card
+        label="Portfolio Dividend Yield"
+        [value]="m.portfolioDividendYieldPercent"
+        [isPercent]="true"
+        subtitle="Annual income / portfolio value"
+      />
+      <app-metric-card
+        label="Avg Yield on Cost"
+        [value]="averageYieldOnCost()"
+        [isPercent]="true"
+        subtitle="DPS / original purchase price"
+      />
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>Upcoming Dividends by Month</h2>
+      @if (monthlyTotals().size > 0) {
+        <app-chart type="bar" [data]="chartData()" [options]="chartOptions" />
+      } @else {
+        <p class="empty-chart">No dividend schedules found for your holdings.</p>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Dividend Calendar</h2>
+      @if (schedules().length > 0) {
+        <div class="calendar-list">
+          @for (item of schedules(); track item.id) {
+            <article class="calendar-item">
+              <div class="calendar-date">
+                <span class="month">{{ item.payDate | date: 'MMM' }}</span>
+                <span class="day">{{ item.payDate | date: 'd' }}</span>
+              </div>
+              <div class="calendar-details">
+                <strong>{{ item.ticker }}</strong>
+                <span>{{ payoutAmount(item.ticker, item.amountPerShare) | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+                <small>Ex-date: {{ item.exDate | date: 'mediumDate' }}</small>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty-chart">Income-focused tickers like SCHD, O, or KO will populate this view.</p>
+      }
+    </div>
+
+    <div class="panel">
+      <h2>Income by Holding</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>DPS (Annual)</th>
+              <th>Shares</th>
+              <th>Annual Income</th>
+              <th>Yield on Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of m.holdings; track item.holding.id) {
+              <tr>
+                <td class="ticker">{{ item.holding.ticker }}</td>
+                <td>{{ item.holding.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
+                <td>{{ item.holding.shares | number: '1.0-4' }}</td>
+                <td>{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                <td>{{ item.yieldOnCostPercent | number: '1.2-2' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <h2>No income data yet</h2>
+      <p>Add dividend-paying holdings to project your passive income paycheck.</p>
+    </div>
+  }
+</section>
