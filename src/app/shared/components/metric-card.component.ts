@@ -9,7 +9,9 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
     <article class="metric-card" [class.positive]="positive" [class.negative]="negative">
       <p class="metric-label">{{ label }}</p>
       <p class="metric-value">
-        @if (isPercent) {
+        @if (textValue) {
+          {{ textValue }}
+        } @else if (isPercent) {
           {{ value | number: '1.2-2' }}%
         } @else if (isCurrency) {
           {{ value | currency: 'USD' : 'symbol' : '1.2-2' }}
@@ -82,6 +84,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 export class MetricCardComponent {
   @Input({ required: true }) label!: string;
   @Input({ required: true }) value!: number;
+  @Input() textValue = '';
   @Input() subtitle = '';
   @Input() isCurrency = false;
   @Input() isPercent = false;

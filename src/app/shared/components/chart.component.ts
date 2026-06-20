@@ -21,18 +21,17 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-chart',
   standalone: true,
-  template: `<div class="chart-wrapper"><canvas #canvas></canvas></div>`,
+  template: `<div class="chart-wrapper" [style.height.px]="height"><canvas #canvas></canvas></div>`,
   styles: [
     `
       .chart-wrapper {
         position: relative;
         width: 100%;
-        height: 280px;
       }
 
       @media (max-width: 768px) {
         .chart-wrapper {
-          height: 220px;
+          min-height: 220px;
         }
       }
     `,
@@ -44,6 +43,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input({ required: true }) type!: ChartType;
   @Input({ required: true }) data!: ChartData;
   @Input() options: ChartConfiguration['options'] = {};
+  @Input() height = 280;
 
   private chart: Chart | null = null;
   private chartType: ChartType | null = null;

@@ -358,11 +358,15 @@ export class PortfolioCalculatorService {
   ): FirePlanSummary {
     const freedomNumber =
       withdrawalRatePercent > 0 ? (monthlyIncomeGoal * 12) / (withdrawalRatePercent / 100) : 0;
-    const monthlyGap = Math.max(0, monthlyIncomeGoal - metrics.projectedMonthlyIncome);
-    const goalReached = metrics.projectedMonthlyIncome >= monthlyIncomeGoal;
+    const monthlyGap =
+      monthlyIncomeGoal > 0 ? Math.max(0, monthlyIncomeGoal - metrics.projectedMonthlyIncome) : 0;
+    const goalReached =
+      monthlyIncomeGoal > 0 && metrics.projectedMonthlyIncome >= monthlyIncomeGoal;
 
     let yearsToGoal: number | null = null;
-    if (goalReached) {
+    if (monthlyIncomeGoal <= 0) {
+      yearsToGoal = null;
+    } else if (goalReached) {
       yearsToGoal = 0;
     } else {
       const projection = this.projectFirePath(
@@ -440,6 +444,50 @@ export class PortfolioCalculatorService {
     }
 
     return projections;
+  }
+
+  formatHoldingsCsv(metrics: PortfolioMetrics | null): string {
+    const header =
+      'Ticker,Shares,Purchase Price,Current Price,Cost Basis,Market Value,Unrealized P&L,Growth %,Annual Dividend,Yield on Cost %';
+
+    if (!metrics) {
+      return `${header}\n`;
+    }
+
+    const rows = metrics.holdings.map((h) =>
+      [
+        h.holding.ticker,
+        h.holding.shares,
+        h.holding.purchasePrice.toFixed(2),
+        h.holding.currentPrice.toFixed(2),
+        h.costBasis.toFixed(2),
+        h.assetValue.toFixed(2),
+        h.unrealizedGainLoss.toFixed(2),
+        h.assetGrowthPercent.toFixed(2),
+        h.annualDividendIncome.toFixed(2),
+        h.yieldOnCostPercent.toFixed(2),
+      ].join(','),
+    );
+
+    return [header, ...rows].join('\n');
+  }
+
+  computeUpcomingDividendTotal(
+    schedules: DividendSchedule[],
+    holdings: Holding[],
+    days = 30,
+  ): number {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + days);
+    const sharesByTicker = new Map(holdings.map((h) => [h.ticker, h.shares]));
+    const today = new Date();
+
+    return schedules
+      .filter((s) => {
+        const payDate = new Date(s.payDate);
+        return payDate >= today && payDate <= cutoff;
+      })
+      .reduce((sum, s) => sum + s.amountPerShare * (sharesByTicker.get(s.ticker) ?? 0), 0);
   }
 
   aggregateDividendsByMonth(schedules: DividendSchedule[], holdings: Holding[]): Map<string, number> {

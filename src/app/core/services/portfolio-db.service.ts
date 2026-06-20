@@ -198,16 +198,16 @@ export class PortfolioDbService {
     for (const holding of data.holdings) {
       await tx.objectStore('holdings').put(holding);
     }
-    for (const schedule of data.dividendSchedules) {
+    for (const schedule of data.dividendSchedules ?? []) {
       await tx.objectStore('dividendSchedules').put(schedule);
     }
-    for (const snapshot of data.portfolioSnapshots) {
+    for (const snapshot of data.portfolioSnapshots ?? []) {
       await tx.objectStore('portfolioSnapshots').put(snapshot);
     }
     for (const item of data.watchlist ?? []) {
       await tx.objectStore('watchlist').put(item);
     }
-    await tx.objectStore('settings').put(data.settings ?? { ...DEFAULT_SETTINGS });
+    await tx.objectStore('settings').put({ ...DEFAULT_SETTINGS, ...data.settings, id: 'settings' });
     await tx.done;
   }
 

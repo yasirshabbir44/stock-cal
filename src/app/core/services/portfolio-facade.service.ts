@@ -110,7 +110,11 @@ export class PortfolioFacadeService {
       return this.initPromise;
     }
 
-    this.initPromise = this.loadPortfolio();
+    this.initPromise = this.loadPortfolio().finally(() => {
+      if (!this.initialized) {
+        this.initPromise = null;
+      }
+    });
     return this.initPromise;
   }
 
@@ -143,7 +147,7 @@ export class PortfolioFacadeService {
         await this.refreshMarketData(false);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load portfolio';
+      const message = this.errorMessage(err, 'Failed to load portfolio');
       this.error.set(message);
       this.toast.error(message);
     } finally {
@@ -165,47 +169,34 @@ export class PortfolioFacadeService {
       return;
     }
 
-    this.loading.set(true);
-    this.error.set(null);
+    await this.runWithLoading(
+      async () => {
+        const quote = await this.stockApi.fetchQuote(ticker);
+        const schedules = await this.stockApi.fetchUpcomingDividends(ticker);
+        const now = new Date().toISOString();
 
-    try {
-      const quote = await this.stockApi.fetchQuote(ticker);
-      const schedules = await this.stockApi.fetchUpcomingDividends(ticker);
-      const now = new Date().toISOString();
+        const holding: Holding = {
+          id: crypto.randomUUID(),
+          ticker,
+          companyName: input.companyName,
+          logoUrl: input.logoUrl ?? getStockLogoUrl(ticker),
+          shares: input.shares,
+          purchasePrice: input.purchasePrice,
+          currentPrice: quote.currentPrice,
+          annualDividendPerShare: quote.annualDividendPerShare,
+          lastUpdated: now,
+          createdAt: now,
+        };
 
-      const holding: Holding = {
-        id: crypto.randomUUID(),
-        ticker,
-        companyName: input.companyName,
-        logoUrl: input.logoUrl ?? getStockLogoUrl(ticker),
-        shares: input.shares,
-        purchasePrice: input.purchasePrice,
-        currentPrice: quote.currentPrice,
-        annualDividendPerShare: quote.annualDividendPerShare,
-        lastUpdated: now,
-        createdAt: now,
-      };
-
-      await this.db.saveHolding(holding);
-      await this.db.replaceDividendSchedulesForTicker(ticker, schedules);
-
-      this.holdings.update((list) => [...list, holding]);
-      this.dividendSchedules.update((list) => [
-        ...list.filter((s) => s.ticker !== ticker),
-        ...schedules,
-      ]);
-
-      await this.recordSnapshot();
-      this.refreshMetrics();
-      this.toast.success(`${ticker} added to portfolio`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add holding';
-      this.error.set(message);
-      this.toast.error(message);
-      throw err;
-    } finally {
-      this.loading.set(false);
-    }
+        await this.persistHoldingMarketData(holding, schedules);
+        this.appendHoldingMarketData(holding, schedules);
+        await this.recordSnapshot();
+        this.refreshMetrics();
+        this.toast.success(`${ticker} added to portfolio`);
+      },
+      'Failed to add holding',
+      true,
+    );
   }
 
   async updateHolding(id: string, update: HoldingUpdate): Promise<void> {
@@ -247,39 +238,14 @@ export class PortfolioFacadeService {
       return;
     }
 
-    this.loading.set(true);
-    this.error.set(null);
-
-    try {
-      const quote = await this.stockApi.fetchQuote(holding.ticker);
-      const schedules = await this.stockApi.fetchUpcomingDividends(holding.ticker);
-
-      const updated: Holding = {
-        ...holding,
-        currentPrice: quote.currentPrice,
-        annualDividendPerShare: quote.annualDividendPerShare,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      await this.db.saveHolding(updated);
-      await this.db.replaceDividendSchedulesForTicker(holding.ticker, schedules);
-
-      this.holdings.update((list) => list.map((h) => (h.id === id ? updated : h)));
-      this.dividendSchedules.update((list) => [
-        ...list.filter((s) => s.ticker !== holding.ticker),
-        ...schedules,
-      ]);
-
+    await this.runWithLoading(async () => {
+      const { updated, schedules } = await this.fetchMarketDataForHolding(holding);
+      await this.persistHoldingMarketData(updated, schedules);
+      this.applyHoldingMarketUpdate(id, updated, schedules);
       await this.recordSnapshot();
       this.refreshMetrics();
       this.toast.success(`${holding.ticker} refreshed`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh holding';
-      this.error.set(message);
-      this.toast.error(message);
-    } finally {
-      this.loading.set(false);
-    }
+    }, 'Failed to refresh holding');
   }
 
   async refreshMarketData(showToast = true): Promise<void> {
@@ -288,50 +254,34 @@ export class PortfolioFacadeService {
       return;
     }
 
-    this.loading.set(true);
-    this.error.set(null);
-
-    try {
-      const updatedHoldings: Holding[] = [];
-      const allSchedules: DividendSchedule[] = [];
+    await this.runWithLoading(async () => {
+      const results: { updated: Holding; schedules: DividendSchedule[] }[] = [];
 
       for (const holding of currentHoldings) {
-        const quote = await this.stockApi.fetchQuote(holding.ticker);
-        const schedules = await this.stockApi.fetchUpcomingDividends(holding.ticker);
-
-        const updated: Holding = {
-          ...holding,
-          currentPrice: quote.currentPrice,
-          annualDividendPerShare: quote.annualDividendPerShare,
-          lastUpdated: new Date().toISOString(),
-        };
-
-        await this.db.saveHolding(updated);
-        await this.db.replaceDividendSchedulesForTicker(holding.ticker, schedules);
-
-        updatedHoldings.push(updated);
-        allSchedules.push(...schedules);
+        results.push(await this.fetchMarketDataForHolding(holding));
       }
 
-      this.holdings.set(updatedHoldings);
-      this.dividendSchedules.set(allSchedules);
+      for (const { updated, schedules } of results) {
+        await this.persistHoldingMarketData(updated, schedules);
+      }
+
+      this.holdings.set(results.map((r) => r.updated));
+      this.dividendSchedules.set(results.flatMap((r) => r.schedules));
       await this.recordSnapshot();
       this.refreshMetrics();
 
       if (showToast) {
         this.toast.success('Prices refreshed');
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh market data';
-      this.error.set(message);
-      this.toast.error(message);
-    } finally {
-      this.loading.set(false);
-    }
+    }, 'Failed to refresh market data');
   }
 
   async addWatchlistItem(input: WatchlistItemInput): Promise<void> {
     const ticker = input.ticker.toUpperCase().trim();
+    if (this.holdings().some((h) => h.ticker === ticker)) {
+      this.toast.info(`${ticker} is already in your portfolio`);
+      return;
+    }
     if (this.watchlist().some((w) => w.ticker === ticker)) {
       this.toast.info(`${ticker} is already on your watchlist`);
       return;
@@ -385,32 +335,23 @@ export class PortfolioFacadeService {
       return;
     }
 
-    this.loading.set(true);
-
-    try {
+    await this.runWithLoading(async () => {
+      const previous = [...items];
       const updated: WatchlistItem[] = [];
 
       for (const item of items) {
-        const quote = await this.stockApi.fetchQuote(item.ticker);
-        const refreshed: WatchlistItem = {
-          ...item,
-          currentPrice: quote.currentPrice,
-          annualDividendPerShare: quote.annualDividendPerShare,
-          lastUpdated: new Date().toISOString(),
-        };
-        await this.db.saveWatchlistItem(refreshed);
+        const refreshed = await this.fetchMarketDataForWatchlistItem(item);
         updated.push(refreshed);
       }
 
+      for (const item of updated) {
+        await this.db.saveWatchlistItem(item);
+      }
+
       this.watchlist.set(updated);
-      this.checkWatchlistPriceAlerts(updated);
+      this.checkWatchlistPriceAlerts(previous, updated);
       this.toast.success('Watchlist refreshed');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to refresh watchlist';
-      this.toast.error(message);
-    } finally {
-      this.loading.set(false);
-    }
+    }, 'Failed to refresh watchlist');
   }
 
   async promoteWatchlistToHolding(id: string, shares: number, purchasePrice: number): Promise<void> {
@@ -495,29 +436,7 @@ export class PortfolioFacadeService {
   }
 
   exportHoldingsCsv(): string {
-    const metrics = this.metrics();
-    if (!metrics) {
-      return 'Ticker,Shares,Purchase Price,Current Price,Cost Basis,Market Value,Unrealized P&L,Growth %,Annual Dividend,Yield on Cost %\n';
-    }
-
-    const header =
-      'Ticker,Shares,Purchase Price,Current Price,Cost Basis,Market Value,Unrealized P&L,Growth %,Annual Dividend,Yield on Cost %';
-    const rows = metrics.holdings.map((h) =>
-      [
-        h.holding.ticker,
-        h.holding.shares,
-        h.holding.purchasePrice.toFixed(2),
-        h.holding.currentPrice.toFixed(2),
-        h.costBasis.toFixed(2),
-        h.assetValue.toFixed(2),
-        h.unrealizedGainLoss.toFixed(2),
-        h.assetGrowthPercent.toFixed(2),
-        h.annualDividendIncome.toFixed(2),
-        h.yieldOnCostPercent.toFixed(2),
-      ].join(','),
-    );
-
-    return [header, ...rows].join('\n');
+    return this.calculator.formatHoldingsCsv(this.metrics());
   }
 
   async importData(data: PortfolioExport): Promise<void> {
@@ -531,7 +450,7 @@ export class PortfolioFacadeService {
     this.holdings.set(data.holdings);
     this.dividendSchedules.set(data.dividendSchedules ?? []);
     this.portfolioSnapshots.set(data.portfolioSnapshots ?? []);
-    this.settings.set(data.settings ?? { ...DEFAULT_SETTINGS });
+    this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings, id: 'settings' });
     this.watchlist.set(data.watchlist ?? []);
     this.refreshMetrics();
     this.toast.success('Portfolio restored from backup');
@@ -553,24 +472,106 @@ export class PortfolioFacadeService {
   }
 
   upcomingDividendTotal(days = 30): number {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() + days);
-    const sharesByTicker = new Map(this.holdings().map((h) => [h.ticker, h.shares]));
-
-    return this.dividendSchedules()
-      .filter((s) => {
-        const payDate = new Date(s.payDate);
-        return payDate >= new Date() && payDate <= cutoff;
-      })
-      .reduce((sum, s) => sum + s.amountPerShare * (sharesByTicker.get(s.ticker) ?? 0), 0);
+    return this.calculator.computeUpcomingDividendTotal(
+      this.dividendSchedules(),
+      this.holdings(),
+      days,
+    );
   }
 
-  private checkWatchlistPriceAlerts(items: WatchlistItem[]): void {
-    for (const item of items) {
+  private async runWithLoading(
+    operation: () => Promise<void>,
+    fallbackMessage: string,
+    rethrow = false,
+  ): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      await operation();
+    } catch (err) {
+      const message = this.errorMessage(err, fallbackMessage);
+      this.error.set(message);
+      this.toast.error(message);
+      if (rethrow) {
+        throw err;
+      }
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private errorMessage(err: unknown, fallback: string): string {
+    return err instanceof Error ? err.message : fallback;
+  }
+
+  private async fetchMarketDataForHolding(
+    holding: Holding,
+  ): Promise<{ updated: Holding; schedules: DividendSchedule[] }> {
+    const quote = await this.stockApi.fetchQuote(holding.ticker);
+    const schedules = await this.stockApi.fetchUpcomingDividends(holding.ticker);
+
+    return {
+      updated: {
+        ...holding,
+        currentPrice: quote.currentPrice,
+        annualDividendPerShare: quote.annualDividendPerShare,
+        lastUpdated: new Date().toISOString(),
+      },
+      schedules,
+    };
+  }
+
+  private async fetchMarketDataForWatchlistItem(item: WatchlistItem): Promise<WatchlistItem> {
+    const quote = await this.stockApi.fetchQuote(item.ticker);
+
+    return {
+      ...item,
+      currentPrice: quote.currentPrice,
+      annualDividendPerShare: quote.annualDividendPerShare,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  private async persistHoldingMarketData(
+    holding: Holding,
+    schedules: DividendSchedule[],
+  ): Promise<void> {
+    await this.db.saveHolding(holding);
+    await this.db.replaceDividendSchedulesForTicker(holding.ticker, schedules);
+  }
+
+  private appendHoldingMarketData(holding: Holding, schedules: DividendSchedule[]): void {
+    this.holdings.update((list) => [...list, holding]);
+    this.dividendSchedules.update((list) => [
+      ...list.filter((s) => s.ticker !== holding.ticker),
+      ...schedules,
+    ]);
+  }
+
+  private applyHoldingMarketUpdate(
+    id: string,
+    updated: Holding,
+    schedules: DividendSchedule[],
+  ): void {
+    this.holdings.update((list) => list.map((h) => (h.id === id ? updated : h)));
+    this.dividendSchedules.update((list) => [
+      ...list.filter((s) => s.ticker !== updated.ticker),
+      ...schedules,
+    ]);
+  }
+
+  private checkWatchlistPriceAlerts(previous: WatchlistItem[], updated: WatchlistItem[]): void {
+    const previousById = new Map(previous.map((item) => [item.id, item]));
+
+    for (const item of updated) {
       if (!item.targetPrice || item.targetPrice <= 0) {
         continue;
       }
-      if (item.currentPrice <= item.targetPrice) {
+
+      const prior = previousById.get(item.id);
+      const wasAboveTarget = !prior || prior.currentPrice > item.targetPrice;
+      if (wasAboveTarget && item.currentPrice <= item.targetPrice) {
         this.toast.success(
           `${item.ticker} hit your target price of $${item.targetPrice.toFixed(2)} — now at $${item.currentPrice.toFixed(2)}`,
         );
