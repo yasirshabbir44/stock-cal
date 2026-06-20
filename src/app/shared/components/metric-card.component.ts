@@ -6,7 +6,14 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
   standalone: true,
   imports: [DecimalPipe, CurrencyPipe],
   template: `
-    <article class="metric-card" [class.positive]="positive" [class.negative]="negative">
+    <article
+      class="metric-card"
+      [class.positive]="positive"
+      [class.negative]="negative"
+      [class.accent-wealth]="accent === 'wealth'"
+      [class.accent-income]="accent === 'income'"
+      [class.accent-gold]="accent === 'gold'"
+    >
       <p class="metric-label">{{ label }}</p>
       <p class="metric-value">
         @if (textValue) {
@@ -27,34 +34,66 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
   styles: [
     `
       .metric-card {
+        position: relative;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1.25rem;
+        border-radius: var(--radius-md);
+        padding: 1.25rem 1.25rem 1.125rem;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      }
+
+      .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent-wealth), var(--accent-gold));
+        opacity: 0.65;
+      }
+
+      .metric-card.accent-income::before {
+        background: linear-gradient(90deg, var(--accent-income), #6ee7b7);
+      }
+
+      .metric-card.accent-gold::before {
+        background: linear-gradient(90deg, var(--accent-gold), #f0d78c);
+      }
+
+      .metric-card:hover {
+        border-color: color-mix(in srgb, var(--accent-wealth) 35%, var(--border));
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
       }
 
       .metric-label {
-        margin: 0 0 0.5rem;
-        font-size: 0.8125rem;
-        font-weight: 500;
+        margin: 0 0 0.625rem;
+        font-size: 0.6875rem;
+        font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.08em;
       }
 
       .metric-value {
         margin: 0;
-        font-size: 1.75rem;
+        font-size: 1.625rem;
         font-weight: 700;
+        font-variant-numeric: tabular-nums;
         color: var(--text-primary);
-        line-height: 1.2;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
         word-break: break-word;
       }
 
       .metric-subtitle {
         margin: 0.5rem 0 0;
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
         color: var(--text-muted);
+        line-height: 1.45;
       }
 
       .positive .metric-value {
@@ -71,11 +110,11 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
         }
 
         .metric-value {
-          font-size: 1.375rem;
+          font-size: 1.3125rem;
         }
 
         .metric-label {
-          font-size: 0.75rem;
+          font-size: 0.625rem;
         }
       }
     `,
@@ -90,4 +129,5 @@ export class MetricCardComponent {
   @Input() isPercent = false;
   @Input() positive = false;
   @Input() negative = false;
+  @Input() accent: 'wealth' | 'income' | 'gold' | '' = '';
 }

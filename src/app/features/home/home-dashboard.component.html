@@ -1,8 +1,8 @@
 <section class="dashboard">
   <header class="dashboard-header">
     <div class="header-copy">
-      <p class="eyebrow">Overview</p>
-      <h1>Your Financial Snapshot</h1>
+      <p class="eyebrow">Portfolio Overview</p>
+      <h1>Your Investor Command Center</h1>
       <p class="subtitle">
         @if (lastUpdated(); as updated) {
           <span class="updated-badge">Updated {{ updated | date: 'MMM d, y · h:mm a' }}</span>
@@ -102,7 +102,7 @@
         <div class="panel-header">
           <div>
             <h2>Investor Milestones</h2>
-            <p class="panel-desc">Track your progress toward key wealth and income goals.</p>
+            <p class="panel-desc">Benchmarks used by serious income and growth investors to measure long-term progress.</p>
           </div>
           @if (achievedMilestones().length > 0) {
             <span class="milestone-count">{{ achievedMilestones().length }} unlocked</span>
@@ -292,8 +292,8 @@
           <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <h2>Welcome to StockCal</h2>
-      <p>Track your capital growth and dividend income in one place — all stored privately on your device.</p>
+      <h2>Welcome, Investor</h2>
+      <p>Build a professional view of your portfolio — wealth, dividend income, and your path to financial independence. Everything stays private on your device.</p>
 
       <div class="feature-grid">
         <div class="feature-item">
