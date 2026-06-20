@@ -6,11 +6,13 @@ import { PortfolioFacadeService } from '../../core/services/portfolio-facade.ser
 import { ThemeService } from '../../core/services/theme.service';
 import { ChartComponent } from '../../shared/components/chart.component';
 import { QuickAddHoldingComponent } from '../../shared/components/quick-add-holding.component';
+import { StockIconComponent } from '../../shared/components/stock-icon.component';
+import { POPULAR_STOCKS } from '../../core/constants/popular-stocks';
 
 @Component({
   selector: 'app-home-dashboard',
   standalone: true,
-  imports: [ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe, QuickAddHoldingComponent],
+  imports: [ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe, QuickAddHoldingComponent, StockIconComponent],
   templateUrl: './home-dashboard.component.html',
   styleUrl: './home-dashboard.component.scss',
 })
@@ -26,6 +28,7 @@ export class HomeDashboardComponent implements OnInit {
   readonly lastUpdated = this.portfolio.lastUpdated;
   readonly showQuickAdd = signal(false);
   readonly quickAddTicker = signal('');
+  readonly quickStartStocks = POPULAR_STOCKS.slice(0, 5);
 
   readonly allocationChart = computed<ChartData<'doughnut'>>(() => {
     const allocation = this.portfolio.allocationByTicker();

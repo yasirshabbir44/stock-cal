@@ -74,7 +74,10 @@
         <ul class="top-list">
           @for (item of m.holdings.slice(0, 5); track item.holding.id) {
             <li>
-              <span class="ticker">{{ item.holding.ticker }}</span>
+              <span class="ticker-cell">
+                <app-stock-icon [symbol]="item.holding.ticker" [logoUrl]="item.holding.logoUrl" size="sm" />
+                <span class="ticker">{{ item.holding.ticker }}</span>
+              </span>
               <span class="value">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
               <span class="income">+{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}/yr</span>
             </li>
@@ -112,8 +115,11 @@
       <div class="quick-start">
         <h3>Quick start — pick a popular stock:</h3>
         <div class="chip-row">
-          @for (t of ['AAPL', 'MSFT', 'SCHD', 'O', 'KO']; track t) {
-            <button type="button" class="chip" (click)="openQuickAdd(t)">{{ t }}</button>
+          @for (stock of quickStartStocks; track stock.symbol) {
+            <button type="button" class="chip chip-with-icon" (click)="openQuickAdd(stock.symbol)">
+              <app-stock-icon [symbol]="stock.symbol" size="sm" />
+              {{ stock.symbol }}
+            </button>
           }
         </div>
       </div>

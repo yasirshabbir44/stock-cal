@@ -2,7 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { POPULAR_STOCKS } from '../constants/popular-stocks';
 import { DividendSchedule } from '../models/dividend-schedule.model';
+import { StockSuggestion } from '../models/stock-search.model';
+import { getStockLogoUrl } from '../utils/stock-logo.util';
 
 export interface StockQuote {
   currentPrice: number;
@@ -17,6 +20,14 @@ interface FinnhubDividendEntry {
   exDate: string;
   payDate: string;
   amount: number;
+}
+
+interface FinnhubSearchResponse {
+  result: Array<{
+    symbol: string;
+    description: string;
+    type: string;
+  }>;
 }
 
 const MOCK_QUOTES: Record<string, StockQuote> = {
@@ -66,6 +77,38 @@ export class StockApiService {
     }
   }
 
+  async searchSymbols(query: string): Promise<StockSuggestion[]> {
+    const trimmed = query.trim();
+    if (trimmed.length < 1) {
+      return this.withLogos(POPULAR_STOCKS.slice(0, 8));
+    }
+
+    if (!this.apiKey) {
+      return this.searchMockSymbols(trimmed);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get<FinnhubSearchResponse>(
+          `https://finnhub.io/api/v1/search?q=${encodeURIComponent(trimmed)}&token=${this.apiKey}`,
+        ),
+      );
+
+      const results = (response.result ?? [])
+        .filter((item) => item.type === 'Common Stock' || item.type === 'ETF' || item.type === 'REIT')
+        .slice(0, 8)
+        .map((item) => ({
+          symbol: item.symbol.toUpperCase(),
+          name: item.description,
+          type: item.type,
+        }));
+
+      return results.length ? this.withLogos(results) : this.searchMockSymbols(trimmed);
+    } catch {
+      return this.searchMockSymbols(trimmed);
+    }
+  }
+
   async fetchUpcomingDividends(ticker: string): Promise<DividendSchedule[]> {
     const symbol = ticker.toUpperCase().trim();
 
@@ -94,6 +137,25 @@ export class StockApiService {
     } catch {
       return this.getMockSchedules(symbol);
     }
+  }
+
+  private searchMockSymbols(query: string): StockSuggestion[] {
+    const upper = query.toUpperCase();
+    const matches = POPULAR_STOCKS.filter(
+      (stock) =>
+        stock.symbol.includes(upper) ||
+        stock.name.toUpperCase().includes(upper) ||
+        stock.type.toUpperCase().includes(upper),
+    );
+
+    return this.withLogos(matches.slice(0, 8));
+  }
+
+  private withLogos(suggestions: StockSuggestion[]): StockSuggestion[] {
+    return suggestions.map((suggestion) => ({
+      ...suggestion,
+      logoUrl: getStockLogoUrl(suggestion.symbol),
+    }));
   }
 
   private estimateAnnualDividend(dividends: FinnhubDividendEntry[]): number {

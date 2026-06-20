@@ -1,6 +1,8 @@
 export interface Holding {
   id: string;
   ticker: string;
+  companyName?: string;
+  logoUrl?: string;
   shares: number;
   purchasePrice: number;
   currentPrice: number;
@@ -11,6 +13,8 @@ export interface Holding {
 
 export interface HoldingInput {
   ticker: string;
+  companyName?: string;
+  logoUrl?: string;
   shares: number;
   purchasePrice: number;
 }

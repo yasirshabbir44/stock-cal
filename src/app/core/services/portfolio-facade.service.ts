@@ -9,6 +9,7 @@ import { PortfolioDbService } from './portfolio-db.service';
 import { PortfolioCalculatorService } from './portfolio-calculator.service';
 import { StockApiService } from './stock-api.service';
 import { ToastService } from './toast.service';
+import { getStockLogoUrl } from '../utils/stock-logo.util';
 
 export interface HoldingUpdate {
   shares: number;
@@ -139,6 +140,8 @@ export class PortfolioFacadeService {
       const holding: Holding = {
         id: crypto.randomUUID(),
         ticker,
+        companyName: input.companyName,
+        logoUrl: input.logoUrl ?? getStockLogoUrl(ticker),
         shares: input.shares,
         purchasePrice: input.purchasePrice,
         currentPrice: quote.currentPrice,

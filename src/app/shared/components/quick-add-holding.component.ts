@@ -1,11 +1,15 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { POPULAR_STOCKS } from '../../core/constants/popular-stocks';
+import { StockSuggestion } from '../../core/models/stock-search.model';
+import { StockIconComponent } from './stock-icon.component';
+import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
 
 @Component({
   selector: 'app-quick-add-holding',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TickerAutocompleteComponent, StockIconComponent],
   template: `
     @if (open()) {
       <div class="backdrop" (click)="close()" role="presentation">
@@ -13,27 +17,28 @@ import { PortfolioFacadeService } from '../../core/services/portfolio-facade.ser
           <header class="modal-header">
             <div>
               <h2 id="quick-add-title">Add Stock</h2>
-              <p>Enter a ticker and your position details.</p>
+              <p>Search by ticker or company name.</p>
             </div>
             <button type="button" class="close-btn" (click)="close()" aria-label="Close">×</button>
           </header>
 
           <div class="quick-picks">
-            @for (t of quickTickers; track t) {
-              <button type="button" class="chip" (click)="ticker = t">{{ t }}</button>
+            @for (stock of quickStocks; track stock.symbol) {
+              <button type="button" class="chip chip-with-icon" (click)="pickStock(stock)">
+                <app-stock-icon [symbol]="stock.symbol" [logoUrl]="stock.logoUrl" size="sm" />
+                {{ stock.symbol }}
+              </button>
             }
           </div>
 
           <form class="add-form" (ngSubmit)="submit()">
-            <label [class.has-error]="errors.ticker">
+            <label [class.has-error]="errors.ticker" class="ticker-field">
               Ticker
-              <input
-                type="text"
+              <app-ticker-autocomplete
                 [(ngModel)]="ticker"
                 name="ticker"
-                placeholder="e.g. AAPL"
-                autocomplete="off"
-                style="text-transform: uppercase"
+                placeholder="Search AAPL, Microsoft, SCHD…"
+                (selected)="onStockSelected($event)"
               />
               @if (errors.ticker) {
                 <span class="field-error">{{ errors.ticker }}</span>
@@ -125,6 +130,15 @@ import { PortfolioFacadeService } from '../../core/services/portfolio-facade.ser
         margin-bottom: 1.25rem;
       }
 
+      .chip-with-icon {
+        gap: 0.375rem;
+      }
+
+      .ticker-field {
+        position: relative;
+        z-index: 2;
+      }
+
       .add-form {
         display: flex;
         flex-direction: column;
@@ -175,6 +189,7 @@ import { PortfolioFacadeService } from '../../core/services/portfolio-facade.ser
 })
 export class QuickAddHoldingComponent {
   private readonly portfolio = inject(PortfolioFacadeService);
+  private readonly tickerAutocomplete = viewChild(TickerAutocompleteComponent);
 
   readonly open = input(false);
   readonly initialTicker = input('');
@@ -182,12 +197,13 @@ export class QuickAddHoldingComponent {
   readonly added = output<void>();
 
   ticker = '';
+  selectedStock: StockSuggestion | null = null;
   shares: number | null = null;
   purchasePrice: number | null = null;
   submitting = signal(false);
   errors: { ticker?: string; shares?: string; purchasePrice?: string } = {};
 
-  readonly quickTickers = ['AAPL', 'MSFT', 'SCHD', 'O', 'KO', 'JNJ'];
+  readonly quickStocks = POPULAR_STOCKS.slice(0, 6);
 
   constructor() {
     effect(() => {
@@ -200,6 +216,16 @@ export class QuickAddHoldingComponent {
     });
   }
 
+  pickStock(stock: StockSuggestion): void {
+    this.ticker = stock.symbol;
+    this.selectedStock = stock;
+    this.tickerAutocomplete()?.focus();
+  }
+
+  onStockSelected(stock: StockSuggestion): void {
+    this.selectedStock = stock;
+  }
+
   close(): void {
     this.reset();
     this.closed.emit();
@@ -209,8 +235,8 @@ export class QuickAddHoldingComponent {
     this.errors = {};
 
     const ticker = this.ticker.trim().toUpperCase();
-    if (!ticker || !/^[A-Z]{1,5}$/.test(ticker)) {
-      this.errors.ticker = 'Enter a valid ticker (1–5 letters)';
+    if (!ticker || !TickerAutocompleteComponent.isValidTicker(ticker)) {
+      this.errors.ticker = 'Select or enter a valid ticker symbol';
     }
     if (!this.shares || this.shares <= 0) {
       this.errors.shares = 'Shares must be greater than 0';
@@ -227,6 +253,8 @@ export class QuickAddHoldingComponent {
     try {
       await this.portfolio.addHolding({
         ticker,
+        companyName: this.selectedStock?.name,
+        logoUrl: this.selectedStock?.logoUrl,
         shares: this.shares!,
         purchasePrice: this.purchasePrice!,
       });
@@ -241,6 +269,7 @@ export class QuickAddHoldingComponent {
 
   private reset(): void {
     this.ticker = '';
+    this.selectedStock = null;
     this.shares = null;
     this.purchasePrice = null;
     this.errors = {};
