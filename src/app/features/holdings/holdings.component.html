@@ -1,0 +1,157 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Portfolio</p>
+      <h1>Holdings</h1>
+      <p class="subtitle">Add, edit, or remove positions. Duplicate tickers merge automatically.</p>
+    </div>
+    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
+      Refresh All
+    </button>
+  </header>
+
+  <div class="panel form-panel">
+    <h2>Add Holding</h2>
+
+    <div class="quick-picks">
+      <span class="quick-label">Quick add:</span>
+      @for (pick of quickPicks; track pick.ticker) {
+        <button type="button" class="chip" (click)="pickStock(pick.ticker)" [title]="pick.hint">
+          {{ pick.ticker }}
+        </button>
+      }
+    </div>
+
+    <form class="add-form" (ngSubmit)="onSubmit()">
+      <label>
+        Ticker
+        <input
+          id="ticker-input"
+          type="text"
+          name="ticker"
+          [(ngModel)]="ticker"
+          placeholder="e.g. AAPL"
+          required
+          autocomplete="off"
+          style="text-transform: uppercase"
+        />
+      </label>
+      <label>
+        Shares
+        <input
+          type="number"
+          name="shares"
+          [(ngModel)]="shares"
+          placeholder="100"
+          min="0.0001"
+          step="any"
+          required
+        />
+      </label>
+      <label>
+        Purchase Price
+        <input
+          type="number"
+          name="purchasePrice"
+          [(ngModel)]="purchasePrice"
+          placeholder="150.00"
+          min="0.01"
+          step="0.01"
+          required
+        />
+      </label>
+      <button type="submit" class="btn-primary" [disabled]="submitting() || loading()">
+        {{ submitting() ? 'Adding…' : 'Add Stock' }}
+      </button>
+    </form>
+
+    <p class="privacy-note">
+      Stored locally in IndexedDB. Add a Finnhub API key in <code>environment.development.ts</code> for live quotes.
+    </p>
+  </div>
+
+  @if (holdings().length > 0) {
+    <div class="panel">
+      <div class="table-toolbar">
+        <h2>Your Positions ({{ holdings().length }})</h2>
+        <div class="toolbar-actions">
+          <input
+            type="search"
+            class="search-input"
+            [(ngModel)]="searchQuery"
+            placeholder="Search ticker…"
+            aria-label="Search holdings"
+          />
+          <div class="sort-group">
+            <span>Sort:</span>
+            <button type="button" class="sort-btn" [class.active]="sortKey() === 'value'" (click)="setSort('value')">Value</button>
+            <button type="button" class="sort-btn" [class.active]="sortKey() === 'income'" (click)="setSort('income')">Income</button>
+            <button type="button" class="sort-btn" [class.active]="sortKey() === 'ticker'" (click)="setSort('ticker')">A–Z</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Shares</th>
+              <th>Cost Basis</th>
+              <th>Current</th>
+              <th>Value</th>
+              <th>Annual Income</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (holding of filteredHoldings(); track holding.id) {
+              <tr>
+                @if (editingId() === holding.id) {
+                  <td class="ticker">{{ holding.ticker }}</td>
+                  <td>
+                    <input type="number" class="inline-input" [(ngModel)]="editShares" min="0.0001" step="any" />
+                  </td>
+                  <td>
+                    <input type="number" class="inline-input" [(ngModel)]="editPrice" min="0.01" step="0.01" />
+                  </td>
+                  <td colspan="3"></td>
+                  <td class="actions">
+                    <button type="button" class="btn-primary btn-sm" (click)="saveEdit(holding.id)">Save</button>
+                    <button type="button" class="btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
+                  </td>
+                } @else {
+                  <td class="ticker">{{ holding.ticker }}</td>
+                  <td>{{ holding.shares | number: '1.0-4' }}</td>
+                  <td>{{ holding.purchasePrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td>{{ holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td>{{ holding.currentPrice * holding.shares | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td class="income-cell">
+                    {{ holding.annualDividendPerShare * holding.shares | currency: 'USD' : 'symbol' : '1.2-2' }}
+                  </td>
+                  <td class="actions">
+                    <button type="button" class="btn-secondary btn-sm" (click)="startEdit(holding.id, holding.shares, holding.purchasePrice)">
+                      Edit
+                    </button>
+                    <button type="button" class="btn-danger btn-sm" (click)="remove(holding.id, holding.ticker)">
+                      Remove
+                    </button>
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="no-results">No holdings match "{{ searchQuery }}"</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <h2>Start your portfolio</h2>
+      <p>Tap a quick-add chip above or enter a ticker manually.</p>
+    </div>
+  }
+</section>

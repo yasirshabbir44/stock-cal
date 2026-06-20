@@ -1,0 +1,39 @@
+<div class="app-shell">
+  <header class="top-nav">
+    <a routerLink="/home" class="brand">
+      <span class="brand-icon">$</span>
+      <span>
+        <strong>StockCal</strong>
+        <small>Wealth &amp; Income Tracker</small>
+      </span>
+    </a>
+
+    @if (metrics(); as m) {
+      <div class="nav-stats">
+        <div class="nav-stat">
+          <span class="stat-label">Wealth</span>
+          <span class="stat-value wealth">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+        </div>
+        <div class="nav-stat">
+          <span class="stat-label">Monthly</span>
+          <span class="stat-value income">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+        </div>
+      </div>
+    }
+
+    <nav class="nav-links">
+      <a routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+      <a routerLink="/wealth" routerLinkActive="active">Wealth</a>
+      <a routerLink="/paycheck" routerLinkActive="active">Paycheck</a>
+      <a routerLink="/holdings" routerLinkActive="active">Holdings</a>
+      <a routerLink="/settings" routerLinkActive="active">Settings</a>
+    </nav>
+  </header>
+
+  <main class="main-content">
+    <router-outlet />
+  </main>
+
+  <app-toast />
+  <app-loading-overlay [visible]="loading()" message="Updating portfolio…" />
+</div>

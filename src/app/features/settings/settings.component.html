@@ -1,0 +1,42 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Preferences</p>
+      <h1>Settings</h1>
+      <p class="subtitle">Customize goals and manage your local data.</p>
+    </div>
+  </header>
+
+  <div class="panel">
+    <h2>Monthly Income Goal</h2>
+    <p class="panel-desc">Set a target passive income to track progress on your Paycheck dashboard.</p>
+    <form class="goal-form" (ngSubmit)="saveGoal()">
+      <label>
+        Target monthly dividend income
+        <div class="input-prefix">
+          <span>$</span>
+          <input type="number" [(ngModel)]="monthlyGoal" name="monthlyGoal" min="0" step="50" />
+        </div>
+      </label>
+      <button type="submit" class="btn-primary" [disabled]="saving()">Save Goal</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Backup &amp; Restore</h2>
+    <p class="panel-desc">Export your portfolio as JSON. Import it on another device or after clearing browser data.</p>
+    <div class="backup-actions">
+      <button type="button" class="btn-secondary" (click)="exportBackup()">Export Backup</button>
+      <label class="btn-secondary file-btn">
+        Import Backup
+        <input type="file" accept="application/json,.json" (change)="onImportFile($event)" hidden />
+      </label>
+    </div>
+  </div>
+
+  <div class="panel danger-panel">
+    <h2>Danger Zone</h2>
+    <p class="panel-desc">Permanently remove all holdings, snapshots, and schedules from this device.</p>
+    <button type="button" class="btn-danger-solid" (click)="clearAll()">Clear All Data</button>
+  </div>
+</section>
