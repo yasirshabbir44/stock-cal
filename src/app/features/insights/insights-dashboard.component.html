@@ -66,6 +66,45 @@
         />
       </div>
 
+      @if (ins.rebalanceSuggestions.length > 0) {
+        <div class="panel rebalance-panel">
+          <h2>Rebalancing Suggestions</h2>
+          <p class="panel-desc">
+            Positions drifting more than 5% from equal-weight allocation. Consider trimming overweight positions and adding to underweight ones.
+          </p>
+          <div class="table-wrap">
+            <table class="responsive-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Current</th>
+                  <th>Target</th>
+                  <th>Drift</th>
+                  <th>Action</th>
+                  <th>Suggested</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of ins.rebalanceSuggestions; track s.ticker) {
+                  <tr>
+                    <td class="ticker" data-label="Ticker">{{ s.ticker }}</td>
+                    <td data-label="Current">{{ s.currentPercent | number: '1.1-1' }}%</td>
+                    <td data-label="Target">{{ s.targetPercent | number: '1.1-1' }}%</td>
+                    <td data-label="Drift" [class.positive]="s.driftPercent < 0" [class.negative]="s.driftPercent > 0">
+                      {{ s.driftPercent >= 0 ? '+' : '' }}{{ s.driftPercent | number: '1.1-1' }}%
+                    </td>
+                    <td data-label="Action">
+                      <span class="action-badge" [class]="'action-' + s.action">{{ s.action }}</span>
+                    </td>
+                    <td data-label="Suggested">{{ s.suggestedAmount | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
       <div class="two-col">
         <div class="panel chart-panel">
           <h2>Sector Allocation</h2>

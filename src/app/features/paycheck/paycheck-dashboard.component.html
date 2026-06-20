@@ -26,6 +26,12 @@
 
     <div class="metrics-grid">
       <app-metric-card
+        label="Next 30 Days"
+        [value]="upcomingTotal()"
+        [isCurrency]="true"
+        subtitle="Expected dividend payouts"
+      />
+      <app-metric-card
         label="Projected Annual Income"
         [value]="m.totalAnnualDividendIncome"
         [isCurrency]="true"
@@ -106,9 +112,9 @@
 
     <div class="panel">
       <h2>Dividend Calendar</h2>
-      @if (schedules().length > 0) {
+      @if (sortedSchedules().length > 0) {
         <div class="calendar-list">
-          @for (item of schedules(); track item.id) {
+          @for (item of sortedSchedules(); track item.id) {
             <article class="calendar-item">
               <div class="calendar-date">
                 <span class="month">{{ item.payDate | date: 'MMM' }}</span>
