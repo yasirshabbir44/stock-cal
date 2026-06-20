@@ -24,6 +24,7 @@ export class PortfolioFacadeService {
   private readonly toast = inject(ToastService);
 
   private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   readonly holdings = signal<Holding[]>([]);
   readonly dividendSchedules = signal<DividendSchedule[]>([]);
@@ -32,6 +33,21 @@ export class PortfolioFacadeService {
   readonly metrics = signal<PortfolioMetrics | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+
+  readonly allocationByTicker = computed(() => {
+    const metrics = this.metrics();
+    if (!metrics || metrics.totalPortfolioValue === 0) {
+      return [];
+    }
+
+    return metrics.holdings
+      .map((h) => ({
+        ticker: h.holding.ticker,
+        value: h.assetValue,
+        percent: (h.assetValue / metrics.totalPortfolioValue) * 100,
+      }))
+      .sort((a, b) => b.value - a.value);
+  });
 
   readonly incomeGoalProgress = computed(() => {
     const goal = this.settings().monthlyIncomeGoal;
@@ -51,7 +67,20 @@ export class PortfolioFacadeService {
   });
 
   async init(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId) || this.initialized) {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.loadPortfolio();
+    return this.initPromise;
+  }
+
+  private async loadPortfolio(): Promise<void> {
+    if (this.initialized) {
       return;
     }
 
@@ -307,21 +336,6 @@ export class PortfolioFacadeService {
 
   monthlyDividendTotals(): Map<string, number> {
     return this.calculator.aggregateDividendsByMonth(this.dividendSchedules(), this.holdings());
-  }
-
-  allocationByTicker(): { ticker: string; value: number; percent: number }[] {
-    const metrics = this.metrics();
-    if (!metrics || metrics.totalPortfolioValue === 0) {
-      return [];
-    }
-
-    return metrics.holdings
-      .map((h) => ({
-        ticker: h.holding.ticker,
-        value: h.assetValue,
-        percent: (h.assetValue / metrics.totalPortfolioValue) * 100,
-      }))
-      .sort((a, b) => b.value - a.value);
   }
 
   private refreshMetrics(): void {

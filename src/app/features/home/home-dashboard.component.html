@@ -60,10 +60,12 @@
     </div>
 
     <div class="two-col">
-      <div class="panel">
+      <div class="panel chart-panel">
         <h2>Asset Allocation</h2>
         @if (allocationChart().labels?.length) {
-          <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions" />
+          <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions()" />
+        } @else {
+          <p class="empty-chart">Add holdings to see your allocation breakdown.</p>
         }
       </div>
 
