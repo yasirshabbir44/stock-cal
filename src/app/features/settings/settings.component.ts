@@ -59,12 +59,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   setTheme(mode: 'dark' | 'light' | 'system'): void {
-    if (mode === 'system') {
-      const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-      this.theme.setTheme(prefersLight ? 'light' : 'dark');
-    } else {
-      this.theme.setTheme(mode);
-    }
+    this.theme.setPreference(mode);
   }
 
   async exportBackup(): Promise<void> {

@@ -2,10 +2,15 @@ import { Injectable } from '@angular/core';
 import { getSectorForTicker } from '../constants/stock-sectors';
 import { Holding } from '../models/holding.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
+import { FirePlanSummary, FireProjectionYear } from '../models/fire-projection.model';
+import { PortfolioMilestone } from '../models/portfolio-milestone.model';
+import { PortfolioSnapshot } from '../models/portfolio-snapshot.model';
 import {
+  BenchmarkComparison,
   IncomeProjectionYear,
   InsightAlert,
   PortfolioInsights,
+  RebalanceSuggestion,
   SectorAllocation,
 } from '../models/portfolio-insights.model';
 import { HoldingMetrics, PortfolioMetrics } from '../models/portfolio-metrics.model';
@@ -166,6 +171,8 @@ export class PortfolioCalculatorService {
       largestHoldingPercent,
     );
 
+    const rebalanceSuggestions = this.computeRebalanceSuggestions(metrics);
+
     return {
       healthScore,
       healthLabel: this.healthLabel(healthScore),
@@ -175,7 +182,243 @@ export class PortfolioCalculatorService {
       topLosers,
       diversificationScore,
       largestHoldingPercent,
+      rebalanceSuggestions,
     };
+  }
+
+  computeRebalanceSuggestions(metrics: PortfolioMetrics): RebalanceSuggestion[] {
+    const count = metrics.holdings.length;
+    if (count < 2) {
+      return [];
+    }
+
+    const targetPercent = 100 / count;
+    const totalValue = metrics.totalPortfolioValue;
+
+    return metrics.holdings
+      .map((h) => {
+        const currentPercent = totalValue > 0 ? (h.assetValue / totalValue) * 100 : 0;
+        const driftPercent = currentPercent - targetPercent;
+        const suggestedAmount = Math.abs((driftPercent / 100) * totalValue);
+
+        let action: RebalanceSuggestion['action'] = 'hold';
+        if (driftPercent >= 5) {
+          action = 'sell';
+        } else if (driftPercent <= -5) {
+          action = 'buy';
+        }
+
+        return {
+          ticker: h.holding.ticker,
+          currentPercent,
+          targetPercent,
+          driftPercent,
+          action,
+          suggestedAmount,
+        };
+      })
+      .filter((s) => s.action !== 'hold')
+      .sort((a, b) => Math.abs(b.driftPercent) - Math.abs(a.driftPercent));
+  }
+
+  computeBenchmarkComparison(
+    snapshots: PortfolioSnapshot[],
+    portfolioGrowthPercent: number,
+  ): BenchmarkComparison | null {
+    if (snapshots.length < 2) {
+      return null;
+    }
+
+    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const daysBetween = Math.max(
+      1,
+      (new Date(last.date).getTime() - new Date(first.date).getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    const annualizedPortfolio =
+      first.totalValue > 0
+        ? (Math.pow(last.totalValue / first.totalValue, 365 / daysBetween) - 1) * 100
+        : portfolioGrowthPercent;
+
+    const sp500AnnualReturn = 10;
+    const benchmarkGrowthPercent = sp500AnnualReturn * (daysBetween / 365);
+    const alphaPercent = annualizedPortfolio - sp500AnnualReturn;
+
+    return {
+      portfolioGrowthPercent: annualizedPortfolio,
+      benchmarkGrowthPercent,
+      alphaPercent,
+      benchmarkLabel: 'S&P 500 (10% annualized)',
+      trackingDays: Math.round(daysBetween),
+    };
+  }
+
+  computePortfolioMilestones(
+    metrics: PortfolioMetrics,
+    monthlyIncomeGoal: number,
+  ): PortfolioMilestone[] {
+    const milestones: PortfolioMilestone[] = [
+      {
+        id: 'wealth-10k',
+        title: '$10K Portfolio',
+        description: 'First major wealth milestone',
+        category: 'wealth',
+        target: 10_000,
+        current: metrics.totalPortfolioValue,
+        achieved: metrics.totalPortfolioValue >= 10_000,
+        progress: Math.min(100, (metrics.totalPortfolioValue / 10_000) * 100),
+      },
+      {
+        id: 'wealth-100k',
+        title: '$100K Portfolio',
+        description: 'Six-figure investor club',
+        category: 'wealth',
+        target: 100_000,
+        current: metrics.totalPortfolioValue,
+        achieved: metrics.totalPortfolioValue >= 100_000,
+        progress: Math.min(100, (metrics.totalPortfolioValue / 100_000) * 100),
+      },
+      {
+        id: 'wealth-1m',
+        title: '$1M Portfolio',
+        description: 'Millionaire milestone',
+        category: 'wealth',
+        target: 1_000_000,
+        current: metrics.totalPortfolioValue,
+        achieved: metrics.totalPortfolioValue >= 1_000_000,
+        progress: Math.min(100, (metrics.totalPortfolioValue / 1_000_000) * 100),
+      },
+      {
+        id: 'income-100',
+        title: '$100/mo Income',
+        description: 'First passive income paycheck',
+        category: 'income',
+        target: 100,
+        current: metrics.projectedMonthlyIncome,
+        achieved: metrics.projectedMonthlyIncome >= 100,
+        progress: Math.min(100, (metrics.projectedMonthlyIncome / 100) * 100),
+      },
+      {
+        id: 'income-1k',
+        title: '$1K/mo Income',
+        description: 'Covers a major bill',
+        category: 'income',
+        target: 1_000,
+        current: metrics.projectedMonthlyIncome,
+        achieved: metrics.projectedMonthlyIncome >= 1_000,
+        progress: Math.min(100, (metrics.projectedMonthlyIncome / 1_000) * 100),
+      },
+      {
+        id: 'income-goal',
+        title: 'Income Goal',
+        description: 'Hit your monthly target',
+        category: 'income',
+        target: monthlyIncomeGoal,
+        current: metrics.projectedMonthlyIncome,
+        achieved: monthlyIncomeGoal > 0 && metrics.projectedMonthlyIncome >= monthlyIncomeGoal,
+        progress:
+          monthlyIncomeGoal > 0
+            ? Math.min(100, (metrics.projectedMonthlyIncome / monthlyIncomeGoal) * 100)
+            : 0,
+      },
+      {
+        id: 'holdings-5',
+        title: '5 Holdings',
+        description: 'Basic diversification',
+        category: 'portfolio',
+        target: 5,
+        current: metrics.holdings.length,
+        achieved: metrics.holdings.length >= 5,
+        progress: Math.min(100, (metrics.holdings.length / 5) * 100),
+      },
+      {
+        id: 'holdings-10',
+        title: '10 Holdings',
+        description: 'Well-diversified portfolio',
+        category: 'portfolio',
+        target: 10,
+        current: metrics.holdings.length,
+        achieved: metrics.holdings.length >= 10,
+        progress: Math.min(100, (metrics.holdings.length / 10) * 100),
+      },
+    ];
+
+    return milestones;
+  }
+
+  computeFirePlan(
+    metrics: PortfolioMetrics,
+    monthlyIncomeGoal: number,
+    monthlyContribution: number,
+    dividendGrowthRatePercent: number,
+    portfolioGrowthRatePercent: number,
+    withdrawalRatePercent: number,
+  ): FirePlanSummary {
+    const freedomNumber =
+      withdrawalRatePercent > 0 ? (monthlyIncomeGoal * 12) / (withdrawalRatePercent / 100) : 0;
+    const monthlyGap = Math.max(0, monthlyIncomeGoal - metrics.projectedMonthlyIncome);
+    const goalReached = metrics.projectedMonthlyIncome >= monthlyIncomeGoal;
+
+    let yearsToGoal: number | null = null;
+    if (goalReached) {
+      yearsToGoal = 0;
+    } else {
+      const projection = this.projectFirePath(
+        metrics.totalPortfolioValue,
+        metrics.totalAnnualDividendIncome,
+        monthlyContribution,
+        dividendGrowthRatePercent,
+        portfolioGrowthRatePercent,
+        50,
+      );
+
+      for (const year of projection) {
+        if (year.monthlyIncome >= monthlyIncomeGoal) {
+          yearsToGoal = year.year - new Date().getFullYear();
+          break;
+        }
+      }
+    }
+
+    return {
+      freedomNumber,
+      yearsToGoal,
+      monthlyGap,
+      goalReached,
+      withdrawalRatePercent,
+    };
+  }
+
+  projectFirePath(
+    startingPortfolioValue: number,
+    startingAnnualIncome: number,
+    monthlyContribution: number,
+    dividendGrowthRatePercent: number,
+    portfolioGrowthRatePercent: number,
+    years: number,
+  ): FireProjectionYear[] {
+    const projections: FireProjectionYear[] = [];
+    const currentYear = new Date().getFullYear();
+    let portfolioValue = startingPortfolioValue;
+    let annualIncome = startingAnnualIncome;
+
+    for (let i = 0; i <= years; i++) {
+      projections.push({
+        year: currentYear + i,
+        portfolioValue,
+        annualIncome,
+        monthlyIncome: annualIncome / 12,
+      });
+
+      if (i < years) {
+        portfolioValue = portfolioValue * (1 + portfolioGrowthRatePercent / 100) + monthlyContribution * 12;
+        annualIncome *= 1 + dividendGrowthRatePercent / 100;
+      }
+    }
+
+    return projections;
   }
 
   projectIncome(

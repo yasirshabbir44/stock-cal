@@ -125,3 +125,37 @@ label {
   align-self: center;
   padding-bottom: 0.25rem;
 }
+
+@media (max-width: 768px) {
+  .theme-options {
+    flex-direction: column;
+  }
+
+  .theme-option {
+    width: 100%;
+    text-align: center;
+  }
+
+  .backup-actions {
+    flex-direction: column;
+  }
+
+  .backup-actions .btn-secondary,
+  .backup-actions .file-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-danger-solid {
+    width: 100%;
+  }
+
+  .goal-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  label {
+    min-width: 0;
+  }
+}

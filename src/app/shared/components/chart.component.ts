@@ -29,6 +29,12 @@ Chart.register(...registerables);
         width: 100%;
         height: 280px;
       }
+
+      @media (max-width: 768px) {
+        .chart-wrapper {
+          height: 220px;
+        }
+      }
     `,
   ],
 })

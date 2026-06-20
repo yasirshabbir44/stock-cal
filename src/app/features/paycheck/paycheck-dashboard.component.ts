@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
@@ -9,7 +10,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 @Component({
   selector: 'app-paycheck-dashboard',
   standalone: true,
-  imports: [FormsModule, MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [FormsModule, MetricCardComponent, ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe],
   templateUrl: './paycheck-dashboard.component.html',
   styleUrl: './paycheck-dashboard.component.scss',
 })

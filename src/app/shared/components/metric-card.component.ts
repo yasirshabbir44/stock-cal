@@ -46,6 +46,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
         font-weight: 700;
         color: var(--text-primary);
         line-height: 1.2;
+        word-break: break-word;
       }
 
       .metric-subtitle {
@@ -60,6 +61,20 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 
       .negative .metric-value {
         color: var(--danger);
+      }
+
+      @media (max-width: 768px) {
+        .metric-card {
+          padding: 1rem;
+        }
+
+        .metric-value {
+          font-size: 1.375rem;
+        }
+
+        .metric-label {
+          font-size: 0.75rem;
+        }
       }
     `,
   ],

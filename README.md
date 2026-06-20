@@ -1,60 +1,94 @@
 # StockCal
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.0.6.
+StockCal is a client-side dividend portfolio tracker built with Angular 19. Track holdings, project dividend income, monitor portfolio growth, and explore allocation insights — all stored locally in your browser.
 
-## Development server
+## Features
 
-To start a local development server, run:
+- **Home** — Portfolio overview with allocation chart, top holdings, income goal progress, and quick-add for new positions
+- **Wealth** — Portfolio value history with snapshot tracking over time
+- **Paycheck** — Projected monthly dividend income, payment schedules, and progress toward a monthly income goal
+- **Insights** — Sector allocation, portfolio health metrics, and a price watchlist
+- **Holdings** — Add, edit, refresh, and remove stock positions with ticker autocomplete and stock icons
+- **Settings** — Monthly income goal, light/dark/system theme, and JSON backup export/import
 
-```bash
-ng serve
-```
+All portfolio data is persisted in **IndexedDB** — no account or server required.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Tech Stack
 
-## Code scaffolding
+- [Angular 19](https://angular.dev) (standalone components, lazy-loaded routes)
+- [Chart.js](https://www.chartjs.org/) for portfolio and income charts
+- [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) via [idb](https://github.com/jakearchibald/idb) for local storage
+- [Finnhub](https://finnhub.io/) API for live quotes and dividend data (optional)
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Prerequisites
 
-```bash
-ng generate component component-name
-```
+- [Node.js](https://nodejs.org/) 18+
+- npm
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Getting Started
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Install dependencies:
 
 ```bash
-ng test
+npm install
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Start the development server:
 
 ```bash
-ng e2e
+npm start
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Open [http://localhost:4200](http://localhost:4200). The app reloads automatically when source files change.
 
-## Additional Resources
+### Live Stock Data (Optional)
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-# stock-cal
+Without an API key, StockCal uses built-in mock quotes for popular tickers. For live prices and dividend schedules, add a [Finnhub API key](https://finnhub.io/register) to the environment file:
+
+```typescript
+// src/environments/environment.development.ts
+export const environment = {
+  production: false,
+  finnhubApiKey: 'your-api-key-here',
+};
+```
+
+For production builds, set the key in `src/environments/environment.ts`.
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm start` | Start dev server at `http://localhost:4200` |
+| `npm run build` | Production build to `dist/stock-cal` |
+| `npm run watch` | Development build with file watching |
+| `npm test` | Run unit tests (Karma + Jasmine) |
+| `npm run serve:ssr:stock-cal` | Serve the SSR build |
+
+## Project Structure
+
+```
+src/app/
+├── core/
+│   ├── constants/     # Popular stocks, sector mappings
+│   ├── models/        # Holdings, metrics, settings, watchlist
+│   ├── services/      # Portfolio facade, DB, calculator, stock API
+│   └── utils/         # Stock logo helpers
+├── features/
+│   ├── home/          # Dashboard overview
+│   ├── wealth/        # Portfolio value history
+│   ├── paycheck/      # Dividend income tracking
+│   ├── insights/      # Sector allocation & watchlist
+│   ├── holdings/      # Holdings management
+│   └── settings/      # Preferences & data backup
+└── shared/
+    └── components/    # Charts, dialogs, autocomplete, etc.
+```
+
+## Data & Privacy
+
+Portfolio data never leaves your browser unless you explicitly export a backup from Settings. Backups are JSON files that can be re-imported on any device running StockCal.
+
+## License
+
+Private project.

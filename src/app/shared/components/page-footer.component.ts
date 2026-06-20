@@ -35,7 +35,7 @@ import { Component } from '@angular/core';
 
       @media (max-width: 768px) {
         .page-footer {
-          padding-bottom: 6rem;
+          padding: 1.5rem 1rem 6rem;
         }
       }
     `,
