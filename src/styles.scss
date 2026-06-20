@@ -85,6 +85,51 @@ h2 {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.panel-desc {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.panel-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--accent-wealth);
+  text-decoration: none;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.panel-action-link:hover {
+  opacity: 0.8;
+}
+
+.panel-header .panel-action-link {
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .btn-primary,
 .btn-secondary,
 .btn-danger,
