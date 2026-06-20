@@ -242,6 +242,7 @@
                   }
                 </td>
                 <td class="actions">
+                  <a [routerLink]="['/research', item.ticker]" class="btn-secondary btn-sm">Analyze</a>
                   @if (promotingId() === item.id) {
                     <div class="promote-form">
                       <input

@@ -28,6 +28,16 @@ export const routes: Routes = [
       import('./features/insights/insights-dashboard.component').then((m) => m.InsightsDashboardComponent),
   },
   {
+    path: 'research',
+    loadComponent: () =>
+      import('./features/research/stock-research.component').then((m) => m.StockResearchComponent),
+  },
+  {
+    path: 'research/:symbol',
+    loadComponent: () =>
+      import('./features/research/stock-research.component').then((m) => m.StockResearchComponent),
+  },
+  {
     path: 'holdings',
     loadComponent: () => import('./features/holdings/holdings.component').then((m) => m.HoldingsComponent),
   },

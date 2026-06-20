@@ -14,6 +14,7 @@ type NavIcon =
   | 'paycheck'
   | 'plan'
   | 'insights'
+  | 'research'
   | 'holdings'
   | 'settings';
 
@@ -52,6 +53,7 @@ export class AppComponent implements OnInit {
     { path: '/paycheck', label: 'Paycheck', icon: 'paycheck' },
     { path: '/plan', label: 'Plan', icon: 'plan' },
     { path: '/insights', label: 'Insights', icon: 'insights' },
+    { path: '/research', label: 'Research', icon: 'research' },
     { path: '/holdings', label: 'Holdings', icon: 'holdings' },
     { path: '/settings', label: 'Settings', icon: 'settings' },
   ];

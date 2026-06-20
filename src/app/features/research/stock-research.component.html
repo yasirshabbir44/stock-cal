@@ -1,0 +1,505 @@
+<section class="dashboard">
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Deep Dive</p>
+      <h1>Stock Research</h1>
+      <p class="subtitle">Search a ticker to see company health, dividend safety, and plain-English guidance.</p>
+    </div>
+  </header>
+
+  <div class="panel search-panel">
+    <form class="search-form" (submit)="$event.preventDefault(); analyze()">
+      <div class="search-field">
+        <label class="sr-only" for="research-search">Stock ticker</label>
+        <app-ticker-autocomplete
+          inputId="research-search"
+          [ngModel]="searchTicker()"
+          (ngModelChange)="searchTicker.set($event)"
+          (selected)="onStockSelected($event)"
+          name="researchTicker"
+          placeholder="Type a ticker or company name…"
+        />
+      </div>
+      <button type="submit" class="btn-primary search-btn" [disabled]="!searchTicker().trim() || analyzing()">
+        @if (analyzing()) {
+          <span class="btn-spinner" aria-hidden="true"></span>
+          Analyzing…
+        } @else {
+          Analyze
+        }
+      </button>
+    </form>
+
+    @if (!report()) {
+      <div class="quick-pick-groups">
+        @for (group of quickPickGroups; track group.label) {
+          <div class="pick-group">
+            <div class="pick-group-header">
+              <strong>{{ group.label }}</strong>
+              <span>{{ group.hint }}</span>
+            </div>
+            <div class="pick-chips">
+              @for (symbol of group.symbols; track symbol) {
+                <button type="button" class="chip chip-with-icon" (click)="analyzeSymbol(symbol)">
+                  <app-stock-icon [symbol]="symbol" size="sm" />
+                  {{ symbol }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="panel error-panel" role="alert">
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  @if (analyzing()) {
+    <div class="loading-panel">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Checking company health for <strong>{{ searchTicker().toUpperCase() }}</strong>…</p>
+    </div>
+  }
+
+  @if (report(); as r) {
+    <!-- Compact stock header -->
+    <div class="stock-header panel">
+      <div class="stock-identity">
+        <app-stock-icon [symbol]="r.suggestion.symbol" [logoUrl]="r.suggestion.logoUrl" size="md" />
+        <div>
+          <div class="symbol-row">
+            <h2>{{ r.suggestion.symbol }}</h2>
+            <span class="type-badge">{{ r.profile.type }}</span>
+          </div>
+          <p class="company-name">{{ r.profile.name }}</p>
+          <span class="sector-line">{{ r.profile.sector }} · {{ r.profile.industry }}</span>
+        </div>
+      </div>
+      <div class="price-block">
+        <span class="current-price">{{ r.fundamentals.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+        <span
+          class="price-change"
+          [class.positive]="r.fundamentals.changePercent >= 0"
+          [class.negative]="r.fundamentals.changePercent < 0"
+        >
+          {{ r.fundamentals.changePercent >= 0 ? '+' : '' }}{{ r.fundamentals.changePercent | number: '1.2-2' }}% today
+        </span>
+      </div>
+    </div>
+
+    <!-- Dual scores -->
+    <div class="score-row">
+      <div class="score-card" [style.--score-color]="scoreColor(r.companyHealth.overallScore)">
+        <span class="score-num">{{ r.companyHealth.overallScore }}</span>
+        <span class="score-name">Company Health</span>
+        <span class="score-desc">{{ r.companyHealth.overallLabel }}</span>
+      </div>
+      <div class="score-card" [style.--score-color]="scoreColor(r.incomeFitScore)">
+        <span class="score-num">{{ r.incomeFitScore }}</span>
+        <span class="score-name">Income Fit</span>
+        <span class="score-desc">{{ r.incomeFitLabel }}</span>
+      </div>
+      <div class="score-actions">
+        <button type="button" class="btn-primary btn-sm" (click)="addToWatchlist()">+ Watchlist</button>
+        <a [routerLink]="['/holdings']" [queryParams]="{ ticker: r.suggestion.symbol }" class="btn-secondary btn-sm">
+          Add to Portfolio
+        </a>
+      </div>
+    </div>
+
+    <!-- Plain English summary -->
+    <div class="panel summary-panel">
+      <h2 class="summary-title">
+        <span class="summary-icon" aria-hidden="true">💡</span>
+        In plain English
+      </h2>
+      <p class="plain-summary">{{ r.companyHealth.plainSummary }}</p>
+    </div>
+
+    <!-- Tab navigation -->
+    <nav class="tab-nav" aria-label="Research sections">
+      <button type="button" class="tab-btn" [class.active]="activeTab() === 'overview'" (click)="setTab('overview')">
+        Overview
+      </button>
+      <button type="button" class="tab-btn" [class.active]="activeTab() === 'health'" (click)="setTab('health')">
+        Company Health
+      </button>
+      <button type="button" class="tab-btn" [class.active]="activeTab() === 'income'" (click)="setTab('income')">
+        Income
+      </button>
+      <button type="button" class="tab-btn" [class.active]="activeTab() === 'analysis'" (click)="setTab('analysis')">
+        Deep Analysis
+      </button>
+    </nav>
+
+    <!-- OVERVIEW TAB -->
+    @if (activeTab() === 'overview') {
+      <div class="tab-content">
+        <!-- Health checks at a glance -->
+        <div class="panel">
+          <h2>Health Checklist</h2>
+          <p class="panel-desc">Quick pass/fail view — green means healthy, yellow needs attention, red is a concern.</p>
+          <ul class="check-grid">
+            @for (check of r.companyHealth.checks; track check.id) {
+              <li [class]="'check-' + check.status">
+                <span class="check-icon" aria-hidden="true">{{ healthStatusIcon(check.status) }}</span>
+                <div class="check-body">
+                  <strong>{{ check.label }}</strong>
+                  <span>{{ check.hint }}</span>
+                </div>
+                <span class="check-badge">{{ healthStatusLabel(check.status) }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <!-- 52-week range visual -->
+        @if (week52Position(); as pos) {
+          <div class="panel range-panel">
+            <h2>Price vs. 52-Week Range</h2>
+            <div class="range-bar-wrap">
+              <div class="range-labels">
+                <span>{{ r.fundamentals.week52Low | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                <span class="range-current">{{ r.fundamentals.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+                <span>{{ r.fundamentals.week52High | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+              </div>
+              <div class="range-track">
+                <div class="range-fill" [style.width.%]="pos"></div>
+                <div class="range-marker" [style.left.%]="pos"></div>
+              </div>
+              <p class="range-hint">
+                @if (pos >= 85) {
+                  Near 52-week high — consider waiting for a pullback.
+                } @else if (pos <= 25) {
+                  Near 52-week low — potential buying opportunity if fundamentals are solid.
+                } @else {
+                  Mid-range — no strong timing signal either way.
+                }
+              </p>
+            </div>
+          </div>
+        }
+
+        <!-- Top suggestions -->
+        @if (r.suggestions.length > 0) {
+          <div class="panel suggestions-panel">
+            <h2>Top Suggestions</h2>
+            <ul class="suggestion-list compact">
+              @for (s of r.suggestions.slice(0, 3); track s.id) {
+                <li [class]="'severity-' + s.severity">
+                  <span class="suggestion-icon" aria-hidden="true">{{ severityIcon(s.severity) }}</span>
+                  <div>
+                    <strong>{{ s.title }}</strong>
+                    <p>{{ s.message }}</p>
+                  </div>
+                </li>
+              }
+            </ul>
+            @if (r.suggestions.length > 3) {
+              <button type="button" class="panel-action-link" (click)="setTab('analysis')">
+                See all {{ r.suggestions.length }} suggestions →
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Key numbers -->
+        <div class="metrics-grid compact-metrics">
+          <app-metric-card label="Yield" [value]="r.fundamentals.dividendYieldPercent" [isPercent]="true" accent="income" />
+          <app-metric-card
+            label="P/E"
+            [value]="r.fundamentals.peRatio ?? 0"
+            [textValue]="formatMetric(r.fundamentals.peRatio, 'x')"
+            accent="wealth"
+          />
+          <app-metric-card
+            label="Payout"
+            [value]="r.fundamentals.payoutRatioPercent ?? 0"
+            [textValue]="formatMetric(r.fundamentals.payoutRatioPercent, '%', 'N/A')"
+          />
+          <app-metric-card
+            label="Beta"
+            [value]="r.fundamentals.beta ?? 0"
+            [textValue]="formatMetric(r.fundamentals.beta, '', 'N/A')"
+          />
+        </div>
+      </div>
+    }
+
+    <!-- HEALTH TAB -->
+    @if (activeTab() === 'health') {
+      <div class="tab-content">
+        <div class="panel">
+          <h2>Health Pillars</h2>
+          <p class="panel-desc">Five areas that together show how healthy the company is as a long-term investment.</p>
+          <div class="pillar-list">
+            @for (pillar of r.companyHealth.pillars; track pillar.id) {
+              <div class="pillar-item">
+                <div class="pillar-header">
+                  <span class="pillar-label">{{ pillar.label }}</span>
+                  <span class="pillar-score" [style.color]="pillarBarColor(pillar.status)">{{ pillar.score }}/100</span>
+                </div>
+                <div class="pillar-bar">
+                  <div
+                    class="pillar-fill"
+                    [style.width.%]="pillar.score"
+                    [style.background]="pillarBarColor(pillar.status)"
+                  ></div>
+                </div>
+                <p class="pillar-summary">{{ pillar.summary }}</p>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>Financial Strength</h2>
+            <dl class="detail-list">
+              <div>
+                <dt>Debt / Equity</dt>
+                <dd>{{ formatMetric(r.fundamentals.debtToEquity, '', 'N/A') }}</dd>
+              </div>
+              <div>
+                <dt>Current Ratio</dt>
+                <dd>{{ formatMetric(r.fundamentals.currentRatio, '', 'N/A') }}</dd>
+              </div>
+              <div>
+                <dt>Return on Equity</dt>
+                <dd>{{ formatMetric(r.fundamentals.returnOnEquityPercent, '%', 'N/A') }}</dd>
+              </div>
+              <div>
+                <dt>Market Cap</dt>
+                <dd>{{ formatMarketCap(r.profile.marketCapMillions) }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="panel">
+            <h2>Profitability &amp; Growth</h2>
+            <dl class="detail-list">
+              <div>
+                <dt>Net Margin</dt>
+                <dd>{{ formatMetric(r.fundamentals.profitMarginPercent, '%', 'N/A') }}</dd>
+              </div>
+              <div>
+                <dt>Operating Margin</dt>
+                <dd>{{ formatMetric(r.fundamentals.operatingMarginPercent, '%', 'N/A') }}</dd>
+              </div>
+              <div>
+                <dt>Revenue Growth (3Y)</dt>
+                <dd [class.positive]="(r.fundamentals.revenueGrowthPercent ?? 0) > 0" [class.negative]="(r.fundamentals.revenueGrowthPercent ?? 0) < 0">
+                  @if (r.fundamentals.revenueGrowthPercent != null) {
+                    {{ r.fundamentals.revenueGrowthPercent >= 0 ? '+' : '' }}{{ r.fundamentals.revenueGrowthPercent | number: '1.1-1' }}%
+                  } @else { N/A }
+                </dd>
+              </div>
+              <div>
+                <dt>EPS Growth (3Y)</dt>
+                <dd>{{ formatMetric(r.fundamentals.epsGrowthPercent, '%', 'N/A') }}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Full Health Checklist</h2>
+          <ul class="check-grid">
+            @for (check of r.companyHealth.checks; track check.id) {
+              <li [class]="'check-' + check.status">
+                <span class="check-icon" aria-hidden="true">{{ healthStatusIcon(check.status) }}</span>
+                <div class="check-body">
+                  <strong>{{ check.label }}</strong>
+                  <span>{{ check.hint }}</span>
+                </div>
+                <span class="check-badge">{{ healthStatusLabel(check.status) }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    }
+
+    <!-- INCOME TAB -->
+    @if (activeTab() === 'income') {
+      <div class="tab-content">
+        <div class="metrics-grid">
+          <app-metric-card
+            label="Dividend Yield"
+            [value]="r.fundamentals.dividendYieldPercent"
+            [isPercent]="true"
+            accent="income"
+            [subtitle]="r.fundamentals.annualDividendPerShare > 0
+              ? (r.fundamentals.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-2') + '/share per year'
+              : 'No dividend paid'"
+          />
+          <app-metric-card
+            label="Payout Ratio"
+            [value]="r.fundamentals.payoutRatioPercent ?? 0"
+            [textValue]="formatMetric(r.fundamentals.payoutRatioPercent, '%', 'N/A')"
+            subtitle="% of earnings returned to shareholders"
+          />
+          <app-metric-card
+            label="Dividend Growth (5Y)"
+            [value]="r.fundamentals.dividendGrowthPercent ?? 0"
+            [textValue]="formatMetric(r.fundamentals.dividendGrowthPercent, '%', 'N/A')"
+            accent="gold"
+            subtitle="Historical dividend increase rate"
+          />
+          <app-metric-card
+            label="Income Fit Score"
+            [value]="r.incomeFitScore"
+            [textValue]="r.incomeFitScore + '/100'"
+            accent="income"
+            [subtitle]="r.incomeFitLabel"
+          />
+        </div>
+
+        <div class="panel">
+          <h2>How much income would you earn?</h2>
+          <p class="panel-desc">Estimated annual dividend based on today's price and current dividend rate.</p>
+          <ul class="projection-list">
+            <li>
+              <span>1 share / year</span>
+              <strong>{{ r.fundamentals.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+            </li>
+            <li>
+              <span>100 shares / year</span>
+              <strong>{{ r.fundamentals.annualDividendPerShare * 100 | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+            </li>
+            <li>
+              <span>100 shares / month</span>
+              <strong class="highlight">{{ r.fundamentals.annualDividendPerShare * 100 / 12 | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+            </li>
+            <li>
+              <span>$10,000 invested / month</span>
+              <strong class="highlight">{{ monthlyIncomePer10k() | currency: 'USD' : 'symbol' : '1.0-0' }}</strong>
+            </li>
+          </ul>
+          <p class="projection-note">Assumes dividends stay the same. Actual income changes with dividend cuts, raises, and share price.</p>
+        </div>
+
+        <div class="panel">
+          <h2>Valuation Context</h2>
+          <dl class="detail-list">
+            <div>
+              <dt>P/E Ratio</dt>
+              <dd>{{ formatMetric(r.fundamentals.peRatio, 'x', 'N/A') }}</dd>
+            </div>
+            <div>
+              <dt>Price / Book</dt>
+              <dd>{{ formatMetric(r.fundamentals.priceToBook, 'x', 'N/A') }}</dd>
+            </div>
+            <div>
+              <dt>Price / Sales</dt>
+              <dd>{{ formatMetric(r.fundamentals.priceToSales, 'x', 'N/A') }}</dd>
+            </div>
+            <div>
+              <dt>EPS</dt>
+              <dd>{{ r.fundamentals.eps != null ? (r.fundamentals.eps | currency: 'USD' : 'symbol' : '1.2-2') : 'N/A' }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    }
+
+    <!-- ANALYSIS TAB -->
+    @if (activeTab() === 'analysis') {
+      <div class="tab-content">
+        <div class="panel">
+          <h2>Analysis Breakdown</h2>
+          <p class="panel-desc">Tap any section to expand the full explanation.</p>
+          <div class="technique-accordion">
+            @for (technique of r.techniques; track technique.id; let i = $index) {
+              <details class="technique-details" [open]="i === 0">
+                <summary>
+                  <span class="technique-rating-dot" [class]="'rating-' + technique.rating"></span>
+                  <span class="technique-title">{{ technique.title }}</span>
+                  <span class="technique-rating-badge" [class]="'rating-' + technique.rating">
+                    {{ ratingLabel(technique.rating) }}
+                  </span>
+                  @if (technique.metricValue) {
+                    <span class="technique-metric-inline">{{ technique.metricValue }}</span>
+                  }
+                </summary>
+                <div class="technique-body">
+                  <p class="technique-summary">{{ technique.summary }}</p>
+                  <p class="technique-detail">{{ technique.detail }}</p>
+                </div>
+              </details>
+            }
+          </div>
+        </div>
+
+        <div class="panel suggestions-panel">
+          <h2>All Suggestions</h2>
+          <ul class="suggestion-list">
+            @for (s of r.suggestions; track s.id) {
+              <li [class]="'severity-' + s.severity">
+                <span class="suggestion-icon" aria-hidden="true">{{ severityIcon(s.severity) }}</span>
+                <div>
+                  <strong>{{ s.title }}</strong>
+                  <p>{{ s.message }}</p>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+
+        @if (r.similarTickers.length > 0) {
+          <div class="panel">
+            <h2>Compare Similar Stocks</h2>
+            <p class="panel-desc">Other {{ r.profile.sector }} names to research next.</p>
+            <div class="similar-chips">
+              @for (symbol of r.similarTickers; track symbol) {
+                <button type="button" class="chip chip-with-icon" (click)="analyzeSymbol(symbol)">
+                  <app-stock-icon [symbol]="symbol" size="sm" />
+                  {{ symbol }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="panel company-details-panel">
+          <h2>Company Info</h2>
+          <dl class="detail-list">
+            <div><dt>Industry</dt><dd>{{ r.profile.industry }}</dd></div>
+            <div><dt>Exchange</dt><dd>{{ r.profile.exchange }}</dd></div>
+            <div><dt>Country</dt><dd>{{ r.profile.country }}</dd></div>
+            @if (r.profile.ipoDate) {
+              <div><dt>IPO</dt><dd>{{ r.profile.ipoDate }}</dd></div>
+            }
+            @if (r.profile.website) {
+              <div class="full-width">
+                <dt>Website</dt>
+                <dd><a [href]="r.profile.website" target="_blank" rel="noopener">{{ r.profile.website.replace('https://', '') }}</a></dd>
+              </div>
+            }
+          </dl>
+          <p class="analyzed-footer">Last analyzed {{ r.analyzedAt | date: 'MMM d, y · h:mm a' }}</p>
+        </div>
+      </div>
+    }
+  } @else if (!analyzing() && !error()) {
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h2>Search any stock to get started</h2>
+      <p>Type a ticker above or pick from the quick lists. You'll get a health score, dividend analysis, and clear suggestions.</p>
+      <div class="empty-features">
+        <div><strong>Health score</strong><span>5 pillars + checklist</span></div>
+        <div><strong>Plain English</strong><span>No jargon summary</span></div>
+        <div><strong>Income math</strong><span>See what you'd earn</span></div>
+      </div>
+    </div>
+  }
+</section>
