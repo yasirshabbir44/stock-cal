@@ -1,24 +1,5 @@
 .dashboard-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.subtitle {
-  margin: 0.5rem 0 0;
-  color: var(--text-muted);
+  /* inherited from global styles */
 }
 
 .form-panel h2 {
@@ -52,6 +33,16 @@ label {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-muted);
+}
+
+label.has-error input {
+  border-color: var(--danger);
+}
+
+.field-error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+  font-weight: 500;
 }
 
 input {
@@ -157,6 +148,26 @@ th {
   display: flex;
   gap: 0.375rem;
   white-space: nowrap;
+  align-items: center;
+}
+
+.btn-icon {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: grid;
+  place-items: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-icon:hover:not(:disabled) {
+  color: var(--accent-wealth);
+  border-color: var(--accent-wealth);
 }
 
 .inline-input {
@@ -173,18 +184,5 @@ th {
 }
 
 .empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: var(--surface);
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-}
-
-.empty-state h2 {
-  margin: 0 0 0.5rem;
-}
-
-.empty-state p {
-  margin: 0;
-  color: var(--text-muted);
+  /* inherited from global styles */
 }

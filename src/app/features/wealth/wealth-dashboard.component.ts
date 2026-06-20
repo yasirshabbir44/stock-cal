@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { ChartData } from 'chart.js';
+import { RouterLink } from '@angular/router';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
@@ -8,7 +9,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 @Component({
   selector: 'app-wealth-dashboard',
   standalone: true,
-  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe],
+  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, RouterLink],
   templateUrl: './wealth-dashboard.component.html',
   styleUrl: './wealth-dashboard.component.scss',
 })

@@ -12,9 +12,9 @@
       </p>
     </div>
     <div class="header-actions">
-      <a routerLink="/holdings" class="btn-primary">+ Add Stock</a>
+      <button type="button" class="btn-primary" (click)="openQuickAdd()">+ Add Stock</button>
       <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
-        Refresh
+        ↻ Refresh
       </button>
     </div>
   </header>
@@ -22,6 +22,7 @@
   @if (metrics(); as m) {
     <div class="hero-cards">
       <a routerLink="/wealth" class="hero-card wealth">
+        <span class="hero-icon">◆</span>
         <span class="hero-label">Total Wealth</span>
         <span class="hero-value">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
         <span class="hero-meta" [class.positive]="m.totalAssetGrowthPercent >= 0" [class.negative]="m.totalAssetGrowthPercent < 0">
@@ -30,10 +31,18 @@
       </a>
 
       <a routerLink="/paycheck" class="hero-card income">
+        <span class="hero-icon">$</span>
         <span class="hero-label">Monthly Paycheck</span>
         <span class="hero-value">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
         <span class="hero-meta">{{ m.portfolioDividendYieldPercent | number: '1.2-2' }}% portfolio yield</span>
       </a>
+
+      <div class="hero-card summary">
+        <span class="hero-icon">#</span>
+        <span class="hero-label">Holdings</span>
+        <span class="hero-value">{{ holdings().length }}</span>
+        <span class="hero-meta">{{ m.totalCostBasis | currency: 'USD' : 'symbol' : '1.0-0' }} invested</span>
+      </div>
     </div>
 
     <div class="panel goal-panel">
@@ -79,21 +88,41 @@
     </div>
   } @else {
     <div class="welcome-panel">
+      <div class="welcome-icon">📈</div>
       <h2>Welcome to StockCal</h2>
       <p>Track your capital growth and dividend income in one place — all stored privately on your device.</p>
 
-      <div class="quick-start">
-        <h3>Quick start — tap a popular stock:</h3>
-        <div class="chip-row">
-          <a routerLink="/holdings" [queryParams]="{ ticker: 'AAPL' }" class="chip">AAPL</a>
-          <a routerLink="/holdings" [queryParams]="{ ticker: 'MSFT' }" class="chip">MSFT</a>
-          <a routerLink="/holdings" [queryParams]="{ ticker: 'SCHD' }" class="chip">SCHD</a>
-          <a routerLink="/holdings" [queryParams]="{ ticker: 'O' }" class="chip">O</a>
-          <a routerLink="/holdings" [queryParams]="{ ticker: 'KO' }" class="chip">KO</a>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <strong>Wealth</strong>
+          <span>Track portfolio value & growth</span>
+        </div>
+        <div class="feature-item">
+          <strong>Paycheck</strong>
+          <span>Monitor dividend income</span>
+        </div>
+        <div class="feature-item">
+          <strong>Private</strong>
+          <span>Data stays on your device</span>
         </div>
       </div>
 
-      <a routerLink="/holdings" class="btn-primary btn-large">Add Your First Stock</a>
+      <div class="quick-start">
+        <h3>Quick start — pick a popular stock:</h3>
+        <div class="chip-row">
+          @for (t of ['AAPL', 'MSFT', 'SCHD', 'O', 'KO']; track t) {
+            <button type="button" class="chip" (click)="openQuickAdd(t)">{{ t }}</button>
+          }
+        </div>
+      </div>
+
+      <button type="button" class="btn-primary btn-large" (click)="openQuickAdd()">Add Your First Stock</button>
     </div>
   }
+
+  <app-quick-add-holding
+    [open]="showQuickAdd()"
+    [initialTicker]="quickAddTicker()"
+    (closed)="closeQuickAdd()"
+  />
 </section>

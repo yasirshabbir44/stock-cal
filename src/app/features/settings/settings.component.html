@@ -3,22 +3,63 @@
     <div>
       <p class="eyebrow">Preferences</p>
       <h1>Settings</h1>
-      <p class="subtitle">Customize goals and manage your local data.</p>
+      <p class="subtitle">Customize goals, appearance, and manage your local data.</p>
     </div>
   </header>
 
   <div class="panel">
+    <h2>Appearance</h2>
+    <p class="panel-desc">Choose how StockCal looks on your device.</p>
+    <div class="theme-options">
+      <button
+        type="button"
+        class="theme-option"
+        [class.active]="theme.theme() === 'light'"
+        (click)="setTheme('light')"
+      >
+        ☀ Light
+      </button>
+      <button
+        type="button"
+        class="theme-option"
+        [class.active]="theme.theme() === 'dark'"
+        (click)="setTheme('dark')"
+      >
+        ☾ Dark
+      </button>
+      <button type="button" class="theme-option" (click)="setTheme('system')">
+        ◐ System
+      </button>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>Monthly Income Goal</h2>
     <p class="panel-desc">Set a target passive income to track progress on your Paycheck dashboard.</p>
-    <form class="goal-form" (ngSubmit)="saveGoal()">
+    <form class="goal-form">
       <label>
         Target monthly dividend income
         <div class="input-prefix">
           <span>$</span>
-          <input type="number" [(ngModel)]="monthlyGoal" name="monthlyGoal" min="0" step="50" />
+          <input
+            type="number"
+            [(ngModel)]="monthlyGoal"
+            name="monthlyGoal"
+            min="0"
+            step="50"
+            (ngModelChange)="onGoalChange()"
+          />
         </div>
       </label>
-      <button type="submit" class="btn-primary" [disabled]="saving()">Save Goal</button>
+      <span class="save-status">
+        @if (saving()) {
+          Saving…
+        } @else if (saved()) {
+          ✓ Saved
+        } @else {
+          Unsaved changes
+        }
+      </span>
     </form>
   </div>
 
@@ -26,9 +67,9 @@
     <h2>Backup &amp; Restore</h2>
     <p class="panel-desc">Export your portfolio as JSON. Import it on another device or after clearing browser data.</p>
     <div class="backup-actions">
-      <button type="button" class="btn-secondary" (click)="exportBackup()">Export Backup</button>
+      <button type="button" class="btn-secondary" (click)="exportBackup()">↓ Export Backup</button>
       <label class="btn-secondary file-btn">
-        Import Backup
+        ↑ Import Backup
         <input type="file" accept="application/json,.json" (change)="onImportFile($event)" hidden />
       </label>
     </div>

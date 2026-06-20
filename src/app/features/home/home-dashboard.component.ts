@@ -1,14 +1,15 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ChartComponent } from '../../shared/components/chart.component';
+import { QuickAddHoldingComponent } from '../../shared/components/quick-add-holding.component';
 
 @Component({
   selector: 'app-home-dashboard',
   standalone: true,
-  imports: [ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe, QuickAddHoldingComponent],
   templateUrl: './home-dashboard.component.html',
   styleUrl: './home-dashboard.component.scss',
 })
@@ -21,6 +22,8 @@ export class HomeDashboardComponent implements OnInit {
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
   readonly settings = this.portfolio.settings;
   readonly lastUpdated = this.portfolio.lastUpdated;
+  readonly showQuickAdd = signal(false);
+  readonly quickAddTicker = signal('');
 
   readonly allocationChart = computed<ChartData<'doughnut'>>(() => {
     const allocation = this.portfolio.allocationByTicker();
@@ -52,6 +55,16 @@ export class HomeDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.portfolio.init();
+  }
+
+  openQuickAdd(ticker = ''): void {
+    this.quickAddTicker.set(ticker);
+    this.showQuickAdd.set(true);
+  }
+
+  closeQuickAdd(): void {
+    this.showQuickAdd.set(false);
+    this.quickAddTicker.set('');
   }
 
   async refresh(): Promise<void> {
