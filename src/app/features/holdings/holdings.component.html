@@ -14,25 +14,24 @@
     <h2>Add Holding</h2>
 
     <div class="quick-picks">
-      <span class="quick-label">Quick add:</span>
+      <span class="quick-label">Popular:</span>
       @for (pick of quickPicks; track pick.ticker) {
-        <button type="button" class="chip" (click)="pickStock(pick.ticker)" [title]="pick.hint">
+        <button type="button" class="chip chip-with-icon" (click)="pickStock(pick)" [title]="pick.name">
+          <app-stock-icon [symbol]="pick.ticker" size="sm" />
           {{ pick.ticker }}
         </button>
       }
     </div>
 
     <form class="add-form" (ngSubmit)="onSubmit()" novalidate>
-      <label [class.has-error]="formErrors.ticker">
+      <label [class.has-error]="formErrors.ticker" class="ticker-field">
         Ticker
-        <input
-          id="ticker-input"
-          type="text"
-          name="ticker"
+        <app-ticker-autocomplete
           [(ngModel)]="ticker"
-          placeholder="e.g. AAPL"
-          autocomplete="off"
-          style="text-transform: uppercase"
+          name="ticker"
+          inputId="ticker-input"
+          placeholder="Search AAPL, Microsoft, SCHD…"
+          (selected)="onStockSelected($event)"
         />
         @if (formErrors.ticker) {
           <span class="field-error">{{ formErrors.ticker }}</span>
@@ -85,7 +84,7 @@
             type="search"
             class="search-input"
             [(ngModel)]="searchQuery"
-            placeholder="Search ticker…"
+            placeholder="Search holdings…"
             aria-label="Search holdings"
           />
           <div class="sort-group">
@@ -114,7 +113,12 @@
             @for (holding of filteredHoldings(); track holding.id) {
               <tr>
                 @if (editingId() === holding.id) {
-                  <td class="ticker">{{ holding.ticker }}</td>
+                  <td class="ticker">
+                    <span class="ticker-cell">
+                      <app-stock-icon [symbol]="holding.ticker" [logoUrl]="holding.logoUrl" size="sm" />
+                      <span>{{ holding.ticker }}</span>
+                    </span>
+                  </td>
                   <td>
                     <input type="number" class="inline-input" [(ngModel)]="editShares" min="0.0001" step="any" />
                   </td>
@@ -127,7 +131,17 @@
                     <button type="button" class="btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
                   </td>
                 } @else {
-                  <td class="ticker">{{ holding.ticker }}</td>
+                  <td class="ticker">
+                    <span class="ticker-cell">
+                      <app-stock-icon [symbol]="holding.ticker" [logoUrl]="holding.logoUrl" size="sm" />
+                      <span>
+                        <strong>{{ holding.ticker }}</strong>
+                        @if (holding.companyName) {
+                          <small>{{ holding.companyName }}</small>
+                        }
+                      </span>
+                    </span>
+                  </td>
                   <td>{{ holding.shares | number: '1.0-4' }}</td>
                   <td>{{ holding.purchasePrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
                   <td>{{ holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>

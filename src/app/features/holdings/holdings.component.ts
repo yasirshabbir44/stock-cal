@@ -1,21 +1,26 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
+import { POPULAR_STOCKS } from '../../core/constants/popular-stocks';
+import { StockSuggestion } from '../../core/models/stock-search.model';
+import { StockIconComponent } from '../../shared/components/stock-icon.component';
+import { TickerAutocompleteComponent } from '../../shared/components/ticker-autocomplete.component';
 
 type SortKey = 'ticker' | 'value' | 'income';
 
 interface QuickPick {
   ticker: string;
+  name: string;
   hint: string;
 }
 
 @Component({
   selector: 'app-holdings',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DecimalPipe],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, TickerAutocompleteComponent, StockIconComponent],
   templateUrl: './holdings.component.html',
   styleUrl: './holdings.component.scss',
 })
@@ -27,7 +32,10 @@ export class HoldingsComponent implements OnInit {
   readonly holdings = this.portfolio.holdings;
   readonly loading = this.portfolio.loading;
 
+  private readonly tickerAutocomplete = viewChild(TickerAutocompleteComponent);
+
   ticker = '';
+  selectedStock: StockSuggestion | null = null;
   shares: number | null = null;
   purchasePrice: number | null = null;
   searchQuery = '';
@@ -39,21 +47,22 @@ export class HoldingsComponent implements OnInit {
   refreshingId = signal<string | null>(null);
   formErrors: { ticker?: string; shares?: string; purchasePrice?: string } = {};
 
-  readonly quickPicks: QuickPick[] = [
-    { ticker: 'AAPL', hint: 'Growth' },
-    { ticker: 'MSFT', hint: 'Growth' },
-    { ticker: 'SCHD', hint: 'Dividend ETF' },
-    { ticker: 'O', hint: 'Monthly REIT' },
-    { ticker: 'KO', hint: 'Dividend' },
-    { ticker: 'JNJ', hint: 'Dividend' },
-  ];
+  readonly quickPicks: QuickPick[] = POPULAR_STOCKS.slice(0, 6).map((stock) => ({
+    ticker: stock.symbol,
+    name: stock.name,
+    hint: stock.type,
+  }));
 
   readonly filteredHoldings = computed(() => {
     const query = this.searchQuery.trim().toUpperCase();
     let list = this.holdings();
 
     if (query) {
-      list = list.filter((h) => h.ticker.includes(query));
+      list = list.filter(
+        (h) =>
+          h.ticker.includes(query) ||
+          (h.companyName?.toUpperCase().includes(query) ?? false),
+      );
     }
 
     const key = this.sortKey();
@@ -78,17 +87,26 @@ export class HoldingsComponent implements OnInit {
     });
   }
 
-  pickStock(ticker: string): void {
-    this.ticker = ticker;
-    document.getElementById('ticker-input')?.focus();
+  pickStock(stock: QuickPick): void {
+    this.ticker = stock.ticker;
+    this.selectedStock = {
+      symbol: stock.ticker,
+      name: stock.name,
+      type: stock.hint,
+    };
+    this.tickerAutocomplete()?.focus();
+  }
+
+  onStockSelected(stock: StockSuggestion): void {
+    this.selectedStock = stock;
   }
 
   validateForm(): boolean {
     this.formErrors = {};
 
     const ticker = this.ticker.trim().toUpperCase();
-    if (!ticker || !/^[A-Z]{1,5}$/.test(ticker)) {
-      this.formErrors.ticker = 'Enter a valid ticker (1–5 letters)';
+    if (!ticker || !TickerAutocompleteComponent.isValidTicker(ticker)) {
+      this.formErrors.ticker = 'Select or enter a valid ticker symbol';
     }
     if (!this.shares || this.shares <= 0) {
       this.formErrors.shares = 'Shares must be greater than 0';
@@ -110,11 +128,14 @@ export class HoldingsComponent implements OnInit {
     try {
       await this.portfolio.addHolding({
         ticker: this.ticker.trim().toUpperCase(),
+        companyName: this.selectedStock?.name,
+        logoUrl: this.selectedStock?.logoUrl,
         shares: this.shares!,
         purchasePrice: this.purchasePrice!,
       });
 
       this.ticker = '';
+      this.selectedStock = null;
       this.shares = null;
       this.purchasePrice = null;
       this.formErrors = {};
