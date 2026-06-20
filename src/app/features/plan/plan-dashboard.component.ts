@@ -98,8 +98,14 @@ export class PlanDashboardComponent implements OnInit {
   });
 
   readonly chartOptions = {
+    layout: {
+      padding: { bottom: 4 },
+    },
     plugins: {
-      legend: { position: 'bottom' as const },
+      legend: {
+        position: 'bottom' as const,
+        labels: { padding: 14, boxWidth: 12, usePointStyle: true, pointStyle: 'line' as const },
+      },
       tooltip: {
         callbacks: {
           label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
@@ -108,6 +114,14 @@ export class PlanDashboardComponent implements OnInit {
       },
     },
     scales: {
+      x: {
+        ticks: {
+          maxTicksLimit: 10,
+          autoSkip: true,
+          maxRotation: 0,
+          minRotation: 0,
+        },
+      },
       y: {
         ticks: {
           callback: (value: string | number) =>
@@ -132,6 +146,17 @@ export class PlanDashboardComponent implements OnInit {
     return `${years} year${years === 1 ? '' : 's'} to income goal`;
   }
 
+  yearsToGoalDisplay(): string {
+    const years = this.firePlan().yearsToGoal;
+    if (years === null) {
+      return '50+';
+    }
+    if (years === 0) {
+      return '0';
+    }
+    return String(years);
+  }
+
   incomeGoalSubtitle(): string {
     return `${this.incomeGoalProgress().toFixed(0)}% of goal`;
   }
@@ -144,5 +169,20 @@ export class PlanDashboardComponent implements OnInit {
     }
     const pct = (metrics.totalPortfolioValue / plan.freedomNumber) * 100;
     return `${pct.toFixed(0)}% of freedom number`;
+  }
+
+  goalStatusClass(monthlyIncome: number): string {
+    const goal = this.settings().monthlyIncomeGoal;
+    if (goal <= 0) {
+      return 'pending';
+    }
+    const ratio = monthlyIncome / goal;
+    if (ratio >= 0.75) {
+      return 'close';
+    }
+    if (ratio >= 0.4) {
+      return 'approaching';
+    }
+    return 'pending';
   }
 }

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-settings',
@@ -14,6 +15,7 @@ import { ThemeService } from '../../core/services/theme.service';
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly confirm = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
   readonly theme = inject(ThemeService);
 
   readonly settings = this.portfolio.settings;
@@ -96,8 +98,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const data = JSON.parse(text);
       await this.portfolio.importData(data);
       this.monthlyGoal = this.settings().monthlyIncomeGoal;
-    } catch {
-      // toast handled in facade
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        this.toast.error('Invalid JSON file — could not parse backup');
+      }
     } finally {
       input.value = '';
     }

@@ -48,6 +48,7 @@
         <app-metric-card
           label="Years to Goal"
           [value]="firePlan().yearsToGoal ?? 0"
+          [textValue]="yearsToGoalDisplay()"
           [subtitle]="yearsToGoalLabel()"
         />
         <app-metric-card
@@ -70,74 +71,74 @@
       <p class="panel-desc">Adjust sliders to see how your path to financial independence changes.</p>
       <div class="controls-grid">
         <label class="control">
-          <span>Monthly contribution</span>
-          <div class="control-input">
-            <input
-              type="range"
-              min="0"
-              max="5000"
-              step="50"
-              [ngModel]="monthlyContribution()"
-              (ngModelChange)="monthlyContribution.set(+$event)"
-            />
-            <span>{{ monthlyContribution() | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+          <div class="control-header">
+            <span class="control-label">Monthly contribution</span>
+            <span class="control-value">{{ monthlyContribution() | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
           </div>
+          <input
+            type="range"
+            min="0"
+            max="5000"
+            step="50"
+            [ngModel]="monthlyContribution()"
+            (ngModelChange)="monthlyContribution.set(+$event)"
+          />
         </label>
         <label class="control">
-          <span>Dividend growth rate</span>
-          <div class="control-input">
-            <input
-              type="range"
-              min="0"
-              max="15"
-              step="0.5"
-              [ngModel]="dividendGrowthRate()"
-              (ngModelChange)="dividendGrowthRate.set(+$event)"
-            />
-            <span>{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
+          <div class="control-header">
+            <span class="control-label">Dividend growth rate</span>
+            <span class="control-value">{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
           </div>
+          <input
+            type="range"
+            min="0"
+            max="15"
+            step="0.5"
+            [ngModel]="dividendGrowthRate()"
+            (ngModelChange)="dividendGrowthRate.set(+$event)"
+          />
         </label>
         <label class="control">
-          <span>Portfolio growth rate</span>
-          <div class="control-input">
-            <input
-              type="range"
-              min="0"
-              max="15"
-              step="0.5"
-              [ngModel]="portfolioGrowthRate()"
-              (ngModelChange)="portfolioGrowthRate.set(+$event)"
-            />
-            <span>{{ portfolioGrowthRate() | number: '1.1-1' }}%/yr</span>
+          <div class="control-header">
+            <span class="control-label">Portfolio growth rate</span>
+            <span class="control-value">{{ portfolioGrowthRate() | number: '1.1-1' }}%/yr</span>
           </div>
+          <input
+            type="range"
+            min="0"
+            max="15"
+            step="0.5"
+            [ngModel]="portfolioGrowthRate()"
+            (ngModelChange)="portfolioGrowthRate.set(+$event)"
+          />
         </label>
         <label class="control">
-          <span>Safe withdrawal rate</span>
-          <div class="control-input">
-            <input
-              type="range"
-              min="2"
-              max="6"
-              step="0.25"
-              [ngModel]="withdrawalRate()"
-              (ngModelChange)="withdrawalRate.set(+$event)"
-            />
-            <span>{{ withdrawalRate() | number: '1.2-2' }}%</span>
+          <div class="control-header">
+            <span class="control-label">Safe withdrawal rate</span>
+            <span class="control-value">{{ withdrawalRate() | number: '1.2-2' }}%</span>
           </div>
+          <input
+            type="range"
+            min="2"
+            max="6"
+            step="0.25"
+            [ngModel]="withdrawalRate()"
+            (ngModelChange)="withdrawalRate.set(+$event)"
+          />
         </label>
         <label class="control">
-          <span>Projection horizon</span>
-          <div class="control-input">
-            <input
-              type="range"
-              min="5"
-              max="40"
-              step="1"
-              [ngModel]="projectionYears()"
-              (ngModelChange)="projectionYears.set(+$event)"
-            />
-            <span>{{ projectionYears() }} years</span>
+          <div class="control-header">
+            <span class="control-label">Projection horizon</span>
+            <span class="control-value">{{ projectionYears() }} years</span>
           </div>
+          <input
+            type="range"
+            min="5"
+            max="40"
+            step="1"
+            [ngModel]="projectionYears()"
+            (ngModelChange)="projectionYears.set(+$event)"
+          />
         </label>
       </div>
     </div>
@@ -146,40 +147,42 @@
       <div class="panel chart-panel">
         <h2>Income Projection</h2>
         <p class="panel-desc">Monthly passive income vs. your goal over time.</p>
-        <app-chart type="line" [data]="incomeChart()" [options]="chartOptions" />
+        <app-chart type="line" [data]="incomeChart()" [options]="chartOptions" [height]="320" />
       </div>
       <div class="panel chart-panel">
         <h2>Wealth Projection</h2>
         <p class="panel-desc">Portfolio growth with contributions vs. freedom number.</p>
-        <app-chart type="line" [data]="wealthChart()" [options]="chartOptions" />
+        <app-chart type="line" [data]="wealthChart()" [options]="chartOptions" [height]="320" />
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel breakdown-panel">
       <h2>Year-by-Year Breakdown</h2>
       <div class="table-wrap">
-        <table class="responsive-table">
+        <table class="breakdown-table responsive-table">
           <thead>
             <tr>
               <th>Year</th>
-              <th>Portfolio Value</th>
-              <th>Annual Income</th>
-              <th>Monthly Income</th>
-              <th>Goal Status</th>
+              <th class="col-num">Portfolio Value</th>
+              <th class="col-num">Annual Income</th>
+              <th class="col-num">Monthly Income</th>
+              <th class="col-status">Goal Status</th>
             </tr>
           </thead>
           <tbody>
             @for (row of fireProjection(); track row.year) {
               <tr [class.goal-met]="row.monthlyIncome >= settings().monthlyIncomeGoal">
                 <td data-label="Year">{{ row.year }}</td>
-                <td data-label="Portfolio">{{ row.portfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                <td data-label="Annual">{{ row.annualIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                <td data-label="Monthly">{{ row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                <td data-label="Status">
+                <td class="col-num" data-label="Portfolio">{{ row.portfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td class="col-num" data-label="Annual">{{ row.annualIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td class="col-num" data-label="Monthly">{{ row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                <td class="col-status" data-label="Status">
                   @if (row.monthlyIncome >= settings().monthlyIncomeGoal) {
                     <span class="status-badge achieved">Goal met</span>
                   } @else {
-                    <span class="status-badge pending">{{ settings().monthlyIncomeGoal - row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }} short</span>
+                    <span [class]="'status-badge ' + goalStatusClass(row.monthlyIncome)">
+                      {{ settings().monthlyIncomeGoal - row.monthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }} short
+                    </span>
                   }
                 </td>
               </tr>
