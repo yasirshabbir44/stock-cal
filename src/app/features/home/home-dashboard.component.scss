@@ -122,6 +122,15 @@
   gap: 1.5rem;
 }
 
+.chart-panel {
+  min-height: 360px;
+}
+
+.empty-chart {
+  color: var(--text-muted);
+  padding: 2rem 0;
+}
+
 .top-list {
   list-style: none;
   margin: 0;

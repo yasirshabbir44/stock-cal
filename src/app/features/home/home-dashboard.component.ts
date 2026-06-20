@@ -1,8 +1,9 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ChartData } from 'chart.js';
+import { ChartConfiguration, ChartData } from 'chart.js';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { ChartComponent } from '../../shared/components/chart.component';
 import { QuickAddHoldingComponent } from '../../shared/components/quick-add-holding.component';
 
@@ -15,6 +16,7 @@ import { QuickAddHoldingComponent } from '../../shared/components/quick-add-hold
 })
 export class HomeDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
+  private readonly theme = inject(ThemeService);
 
   readonly metrics = this.portfolio.metrics;
   readonly holdings = this.portfolio.holdings;
@@ -41,9 +43,16 @@ export class HomeDashboardComponent implements OnInit {
     };
   });
 
-  readonly allocationOptions = {
+  readonly allocationOptions = computed<ChartConfiguration<'doughnut'>['options']>(() => ({
     plugins: {
-      legend: { position: 'right' as const, labels: { color: '#94a3b8', boxWidth: 12 } },
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 12,
+          padding: 16,
+          color: this.theme.theme() === 'dark' ? '#94a3b8' : '#64748b',
+        },
+      },
       tooltip: {
         callbacks: {
           label: (ctx: { label?: string; parsed: number }) =>
@@ -51,7 +60,7 @@ export class HomeDashboardComponent implements OnInit {
         },
       },
     },
-  };
+  }));
 
   ngOnInit(): void {
     void this.portfolio.init();
