@@ -25,6 +25,23 @@ export interface IncomeProjectionYear {
   monthlyIncome: number;
 }
 
+export interface RebalanceSuggestion {
+  ticker: string;
+  currentPercent: number;
+  targetPercent: number;
+  driftPercent: number;
+  action: 'buy' | 'sell' | 'hold';
+  suggestedAmount: number;
+}
+
+export interface BenchmarkComparison {
+  portfolioGrowthPercent: number;
+  benchmarkGrowthPercent: number;
+  alphaPercent: number;
+  benchmarkLabel: string;
+  trackingDays: number;
+}
+
 export interface PortfolioInsights {
   healthScore: number;
   healthLabel: string;
@@ -34,4 +51,5 @@ export interface PortfolioInsights {
   topLosers: PerformerSummary[];
   diversificationScore: number;
   largestHoldingPercent: number;
+  rebalanceSuggestions: RebalanceSuggestion[];
 }

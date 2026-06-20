@@ -70,6 +70,29 @@ export class PortfolioFacadeService {
     return Math.min(100, (monthly / goal) * 100);
   });
 
+  readonly portfolioMilestones = computed(() => {
+    const metrics = this.metrics();
+    if (!metrics) {
+      return [];
+    }
+    return this.calculator.computePortfolioMilestones(metrics, this.settings().monthlyIncomeGoal);
+  });
+
+  readonly achievedMilestones = computed(() =>
+    this.portfolioMilestones().filter((m) => m.achieved),
+  );
+
+  readonly benchmarkComparison = computed(() => {
+    const metrics = this.metrics();
+    if (!metrics) {
+      return null;
+    }
+    return this.calculator.computeBenchmarkComparison(
+      this.portfolioSnapshots(),
+      metrics.totalAssetGrowthPercent,
+    );
+  });
+
   readonly lastUpdated = computed(() => {
     const holdings = this.holdings();
     if (holdings.length === 0) {
@@ -380,6 +403,7 @@ export class PortfolioFacadeService {
       }
 
       this.watchlist.set(updated);
+      this.checkWatchlistPriceAlerts(updated);
       this.toast.success('Watchlist refreshed');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to refresh watchlist';
@@ -408,6 +432,49 @@ export class PortfolioFacadeService {
   projectIncome(years = 5, dividendGrowthRatePercent = 5): ReturnType<PortfolioCalculatorService['projectIncome']> {
     const annual = this.metrics()?.totalAnnualDividendIncome ?? 0;
     return this.calculator.projectIncome(annual, years, dividendGrowthRatePercent);
+  }
+
+  computeFirePlan(
+    monthlyContribution: number,
+    dividendGrowthRatePercent: number,
+    portfolioGrowthRatePercent: number,
+    withdrawalRatePercent: number,
+  ): ReturnType<PortfolioCalculatorService['computeFirePlan']> {
+    const metrics = this.metrics();
+    if (!metrics) {
+      return {
+        freedomNumber: 0,
+        yearsToGoal: null,
+        monthlyGap: 0,
+        goalReached: false,
+        withdrawalRatePercent,
+      };
+    }
+    return this.calculator.computeFirePlan(
+      metrics,
+      this.settings().monthlyIncomeGoal,
+      monthlyContribution,
+      dividendGrowthRatePercent,
+      portfolioGrowthRatePercent,
+      withdrawalRatePercent,
+    );
+  }
+
+  projectFirePath(
+    monthlyContribution: number,
+    dividendGrowthRatePercent: number,
+    portfolioGrowthRatePercent: number,
+    years: number,
+  ): ReturnType<PortfolioCalculatorService['projectFirePath']> {
+    const metrics = this.metrics();
+    return this.calculator.projectFirePath(
+      metrics?.totalPortfolioValue ?? 0,
+      metrics?.totalAnnualDividendIncome ?? 0,
+      monthlyContribution,
+      dividendGrowthRatePercent,
+      portfolioGrowthRatePercent,
+      years,
+    );
   }
 
   async updateMonthlyIncomeGoal(goal: number, showToast = true): Promise<void> {
@@ -483,6 +550,32 @@ export class PortfolioFacadeService {
 
   monthlyDividendTotals(): Map<string, number> {
     return this.calculator.aggregateDividendsByMonth(this.dividendSchedules(), this.holdings());
+  }
+
+  upcomingDividendTotal(days = 30): number {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + days);
+    const sharesByTicker = new Map(this.holdings().map((h) => [h.ticker, h.shares]));
+
+    return this.dividendSchedules()
+      .filter((s) => {
+        const payDate = new Date(s.payDate);
+        return payDate >= new Date() && payDate <= cutoff;
+      })
+      .reduce((sum, s) => sum + s.amountPerShare * (sharesByTicker.get(s.ticker) ?? 0), 0);
+  }
+
+  private checkWatchlistPriceAlerts(items: WatchlistItem[]): void {
+    for (const item of items) {
+      if (!item.targetPrice || item.targetPrice <= 0) {
+        continue;
+      }
+      if (item.currentPrice <= item.targetPrice) {
+        this.toast.success(
+          `${item.ticker} hit your target price of $${item.targetPrice.toFixed(2)} — now at $${item.currentPrice.toFixed(2)}`,
+        );
+      }
+    }
   }
 
   private refreshMetrics(): void {

@@ -79,6 +79,8 @@
                 </li>
               }
             </ul>
+          } @else {
+            <p class="empty-note">Sector data appears once you add holdings with known sector mappings.</p>
           }
         </div>
 
@@ -201,7 +203,39 @@
                   }
                 </td>
                 <td class="actions">
-                  <button type="button" class="btn-danger btn-sm" (click)="removeFromWatchlist(item.id)">Remove</button>
+                  @if (promotingId() === item.id) {
+                    <div class="promote-form">
+                      <input
+                        type="number"
+                        class="promote-input"
+                        placeholder="Shares"
+                        min="0.0001"
+                        step="any"
+                        [ngModel]="promoteShares()"
+                        (ngModelChange)="promoteShares.set($event ? +$event : null)"
+                        name="promoteShares-{{ item.id }}"
+                      />
+                      <input
+                        type="number"
+                        class="promote-input"
+                        placeholder="Price"
+                        min="0.01"
+                        step="0.01"
+                        [ngModel]="promotePrice()"
+                        (ngModelChange)="promotePrice.set($event ? +$event : null)"
+                        name="promotePrice-{{ item.id }}"
+                      />
+                      <button type="button" class="btn-primary btn-sm" (click)="confirmPromote(item.id)" [disabled]="loading()">
+                        Add
+                      </button>
+                      <button type="button" class="btn-secondary btn-sm" (click)="cancelPromote()">Cancel</button>
+                    </div>
+                  } @else {
+                    <button type="button" class="btn-secondary btn-sm" (click)="startPromote(item.id, item.currentPrice)">
+                      Buy
+                    </button>
+                    <button type="button" class="btn-danger btn-sm" (click)="removeFromWatchlist(item.id)">Remove</button>
+                  }
                 </td>
               </tr>
             }

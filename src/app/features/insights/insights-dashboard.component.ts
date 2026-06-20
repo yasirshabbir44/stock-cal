@@ -38,6 +38,10 @@ export class InsightsDashboardComponent implements OnInit {
 
   readonly watchTicker = signal('');
   readonly watchTargetPrice = signal<number | undefined>(undefined);
+  readonly watchSelectedStock = signal<StockSuggestion | null>(null);
+  readonly promotingId = signal<string | null>(null);
+  readonly promoteShares = signal<number | null>(null);
+  readonly promotePrice = signal<number | null>(null);
 
   readonly sectorChart = computed<ChartData<'doughnut'>>(() => {
     const sectors = this.insights()?.sectorAllocation ?? [];
@@ -80,6 +84,7 @@ export class InsightsDashboardComponent implements OnInit {
 
   onWatchTickerSelected(suggestion: StockSuggestion): void {
     this.watchTicker.set(suggestion.symbol);
+    this.watchSelectedStock.set(suggestion);
   }
 
   async addToWatchlist(): Promise<void> {
@@ -90,11 +95,37 @@ export class InsightsDashboardComponent implements OnInit {
 
     await this.portfolio.addWatchlistItem({
       ticker,
+      companyName: this.watchSelectedStock()?.name,
+      logoUrl: this.watchSelectedStock()?.logoUrl,
       targetPrice: this.watchTargetPrice(),
     });
 
     this.watchTicker.set('');
     this.watchTargetPrice.set(undefined);
+    this.watchSelectedStock.set(null);
+  }
+
+  startPromote(id: string, currentPrice: number): void {
+    this.promotingId.set(id);
+    this.promoteShares.set(null);
+    this.promotePrice.set(currentPrice);
+  }
+
+  cancelPromote(): void {
+    this.promotingId.set(null);
+    this.promoteShares.set(null);
+    this.promotePrice.set(null);
+  }
+
+  async confirmPromote(id: string): Promise<void> {
+    const shares = this.promoteShares();
+    const price = this.promotePrice();
+    if (!shares || !price || shares <= 0 || price <= 0) {
+      return;
+    }
+
+    await this.portfolio.promoteWatchlistToHolding(id, shares, price);
+    this.cancelPromote();
   }
 
   async removeFromWatchlist(id: string): Promise<void> {
