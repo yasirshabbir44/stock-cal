@@ -43,7 +43,7 @@ const SIMILAR_BY_SECTOR: Record<string, string[]> = {
   Utilities: ['NEE', 'DUK'],
 };
 
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class StockAnalysisService {
   private readonly stockApi = inject(StockApiService);
 

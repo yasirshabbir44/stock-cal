@@ -3,10 +3,16 @@ import { isPlatformBrowser } from '@angular/common';
 import { Holding, HoldingInput } from '../models/holding.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
 import { PortfolioSnapshot } from '../models/portfolio-snapshot.model';
+import { FirePlanSummary, FireProjectionYear } from '../models/fire-projection.model';
 import { PortfolioMetrics } from '../models/portfolio-metrics.model';
-import { PortfolioInsights } from '../models/portfolio-insights.model';
+import { PortfolioInsights, IncomeProjectionYear } from '../models/portfolio-insights.model';
 import { WatchlistItem, WatchlistItemInput } from '../models/watchlist-item.model';
 import { DEFAULT_SETTINGS, PortfolioExport, UserSettings } from '../models/user-settings.model';
+import {
+  getPortfolioProjectionLibSync,
+  loadPortfolioProjectionLib,
+  type PortfolioProjectionLib,
+} from '../calculations/portfolio-projection.loader';
 import { PortfolioDbService } from './portfolio-db.service';
 import { PortfolioCalculatorService } from './portfolio-calculator.service';
 import { StockApiService } from './stock-api.service';
@@ -28,8 +34,11 @@ export class PortfolioFacadeService {
 
   private initialized = false;
   private initPromise: Promise<void> | null = null;
+  private projectionLoadPromise: Promise<PortfolioProjectionLib> | null = null;
   private autoRefreshInterval: ReturnType<typeof setInterval> | null = null;
   private readonly autoRefreshMs = 60_000;
+
+  private readonly projectionLib = signal<PortfolioProjectionLib | null>(null);
 
   readonly holdings = signal<Holding[]>([]);
   readonly watchlist = signal<WatchlistItem[]>([]);
@@ -57,11 +66,12 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioInsights = computed<PortfolioInsights | null>(() => {
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
-    if (!metrics) {
+    if (!lib || !metrics) {
       return null;
     }
-    return this.calculator.computePortfolioInsights(metrics);
+    return lib.computePortfolioInsights(metrics);
   });
 
   readonly incomeGoalProgress = computed(() => {
@@ -74,11 +84,12 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioMilestones = computed(() => {
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
-    if (!metrics) {
+    if (!lib || !metrics) {
       return [];
     }
-    return this.calculator.computePortfolioMilestones(metrics, this.settings().monthlyIncomeGoal);
+    return lib.computePortfolioMilestones(metrics, this.settings().monthlyIncomeGoal);
   });
 
   readonly achievedMilestones = computed(() =>
@@ -86,11 +97,12 @@ export class PortfolioFacadeService {
   );
 
   readonly benchmarkComparison = computed(() => {
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
-    if (!metrics) {
+    if (!lib || !metrics) {
       return null;
     }
-    return this.calculator.computeBenchmarkComparison(
+    return lib.computeBenchmarkComparison(
       this.portfolioSnapshots(),
       metrics.totalAssetGrowthPercent,
     );
@@ -395,9 +407,44 @@ export class PortfolioFacadeService {
     await this.removeWatchlistItem(id);
   }
 
-  projectIncome(years = 5, dividendGrowthRatePercent = 5): ReturnType<PortfolioCalculatorService['projectIncome']> {
+  ensureProjectionsLoaded(): Promise<void> {
+    const synced = this.syncProjectionLibFromCache();
+    if (synced) {
+      return Promise.resolve();
+    }
+
+    this.projectionLoadPromise ??= loadPortfolioProjectionLib().then((lib) => {
+      this.projectionLib.set(lib);
+      return lib;
+    });
+
+    return this.projectionLoadPromise.then(() => undefined);
+  }
+
+  private syncProjectionLibFromCache(): PortfolioProjectionLib | null {
+    const cached = this.projectionLib() ?? getPortfolioProjectionLibSync();
+    if (cached && !this.projectionLib()) {
+      this.projectionLib.set(cached);
+    }
+    return cached;
+  }
+
+  private getProjectionLib(): PortfolioProjectionLib | null {
+    const lib = this.syncProjectionLibFromCache();
+    if (!lib) {
+      void this.ensureProjectionsLoaded();
+    }
+    return lib;
+  }
+
+  projectIncome(years = 5, dividendGrowthRatePercent = 5): IncomeProjectionYear[] {
+    const lib = this.getProjectionLib();
+    if (!lib) {
+      return [];
+    }
+
     const annual = this.metrics()?.totalAnnualDividendIncome ?? 0;
-    return this.calculator.projectIncome(annual, years, dividendGrowthRatePercent);
+    return lib.projectIncome(annual, years, dividendGrowthRatePercent);
   }
 
   computeFirePlan(
@@ -405,8 +452,18 @@ export class PortfolioFacadeService {
     dividendGrowthRatePercent: number,
     portfolioGrowthRatePercent: number,
     withdrawalRatePercent: number,
-  ): ReturnType<PortfolioCalculatorService['computeFirePlan']> {
+  ): FirePlanSummary {
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
+    if (!lib) {
+      return {
+        freedomNumber: 0,
+        yearsToGoal: null,
+        monthlyGap: 0,
+        goalReached: false,
+        withdrawalRatePercent,
+      };
+    }
     if (!metrics) {
       return {
         freedomNumber: 0,
@@ -416,7 +473,7 @@ export class PortfolioFacadeService {
         withdrawalRatePercent,
       };
     }
-    return this.calculator.computeFirePlan(
+    return lib.computeFirePlan(
       metrics,
       this.settings().monthlyIncomeGoal,
       monthlyContribution,
@@ -431,9 +488,14 @@ export class PortfolioFacadeService {
     dividendGrowthRatePercent: number,
     portfolioGrowthRatePercent: number,
     years: number,
-  ): ReturnType<PortfolioCalculatorService['projectFirePath']> {
+  ): FireProjectionYear[] {
+    const lib = this.getProjectionLib();
+    if (!lib) {
+      return [];
+    }
+
     const metrics = this.metrics();
-    return this.calculator.projectFirePath(
+    return lib.projectFirePath(
       metrics?.totalPortfolioValue ?? 0,
       metrics?.totalAnnualDividendIncome ?? 0,
       monthlyContribution,

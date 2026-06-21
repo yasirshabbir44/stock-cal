@@ -1,5 +1,6 @@
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { GITHUB_REPO_URL } from '../../core/constants/app-links';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -17,6 +18,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly confirm = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   readonly theme = inject(ThemeService);
+  readonly githubRepoUrl = GITHUB_REPO_URL;
 
   readonly settings = this.portfolio.settings;
   readonly loading = this.portfolio.loading;

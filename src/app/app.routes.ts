@@ -1,41 +1,53 @@
 import { Routes } from '@angular/router';
+import { StockAnalysisService } from './core/services/stock-analysis.service';
+import { loadRouteWithProjectionLib } from './core/calculations/route-loaders';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'home' },
   {
     path: 'home',
-    loadComponent: () =>
+    loadComponent: loadRouteWithProjectionLib(() =>
       import('./features/home/home-dashboard.component').then((m) => m.HomeDashboardComponent),
+    ),
   },
   {
     path: 'wealth',
-    loadComponent: () =>
+    loadComponent: loadRouteWithProjectionLib(() =>
       import('./features/wealth/wealth-dashboard.component').then((m) => m.WealthDashboardComponent),
+    ),
   },
   {
     path: 'paycheck',
-    loadComponent: () =>
-      import('./features/paycheck/paycheck-dashboard.component').then((m) => m.PaycheckDashboardComponent),
+    loadComponent: loadRouteWithProjectionLib(
+      () =>
+        import('./features/paycheck/paycheck-dashboard.component').then((m) => m.PaycheckDashboardComponent),
+      { waitForLib: true },
+    ),
   },
   {
     path: 'plan',
-    loadComponent: () =>
-      import('./features/plan/plan-dashboard.component').then((m) => m.PlanDashboardComponent),
+    loadComponent: loadRouteWithProjectionLib(
+      () => import('./features/plan/plan-dashboard.component').then((m) => m.PlanDashboardComponent),
+      { waitForLib: true },
+    ),
   },
   {
     path: 'insights',
-    loadComponent: () =>
+    loadComponent: loadRouteWithProjectionLib(() =>
       import('./features/insights/insights-dashboard.component').then((m) => m.InsightsDashboardComponent),
+    ),
   },
   {
     path: 'research',
     loadComponent: () =>
       import('./features/research/stock-research.component').then((m) => m.StockResearchComponent),
+    providers: [StockAnalysisService],
   },
   {
     path: 'research/:symbol',
     loadComponent: () =>
       import('./features/research/stock-research.component').then((m) => m.StockResearchComponent),
+    providers: [StockAnalysisService],
   },
   {
     path: 'holdings',
