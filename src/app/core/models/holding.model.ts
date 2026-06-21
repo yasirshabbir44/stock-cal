@@ -13,6 +13,8 @@ export interface Holding {
   previousYieldOnCostPercent?: number;
   lastUpdated: string;
   createdAt: string;
+  /** User-defined display order (lower = higher in list). */
+  sortOrder?: number;
 }
 
 export interface HoldingInput {

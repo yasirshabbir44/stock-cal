@@ -90,6 +90,7 @@
           <button type="button" class="sort-btn" [class.active]="sortKey() === 'value'" (click)="setSort('value')">Value</button>
           <button type="button" class="sort-btn" [class.active]="sortKey() === 'income'" (click)="setSort('income')">Income</button>
           <button type="button" class="sort-btn" [class.active]="sortKey() === 'ticker'" (click)="setSort('ticker')">A–Z</button>
+          <button type="button" class="sort-btn" [class.active]="sortKey() === 'custom'" (click)="setSort('custom')">Custom</button>
         </div>
       </div>
 
@@ -107,6 +108,16 @@
         (frequencyToggle)="toggleFrequency($event)"
         (clearFilters)="clearFilters()"
       />
+
+      @if (sortKey() === 'custom') {
+        <p class="drag-reorder-hint">
+          @if (dragEnabled()) {
+            Drag the handle to reorder portfolio holdings. Your order is saved automatically.
+          } @else {
+            Clear filters and switch away from watchlist-only view to reorder holdings.
+          }
+        </p>
+      }
 
       @if (useVirtualScroll()) {
         <p class="virtual-scroll-hint">
@@ -158,6 +169,9 @@
           }
           <thead>
             <tr>
+              @if (sortKey() === 'custom') {
+                <th class="drag-col" aria-label="Reorder"></th>
+              }
               <th>Ticker</th>
               <th>Sector</th>
               <th>Frequency</th>
@@ -172,7 +186,7 @@
           @if (filteredRows().length === 0) {
             <tbody>
               <tr>
-                <td colspan="9" class="no-results">No positions match your filters.</td>
+                <td [attr.colspan]="sortKey() === 'custom' ? 10 : 9" class="no-results">No positions match your filters.</td>
               </tr>
             </tbody>
           } @else if (useVirtualScroll()) {
@@ -185,7 +199,11 @@
               }
             </tbody>
           } @else {
-            <tbody>
+            <tbody
+              cdkDropList
+              [cdkDropListDisabled]="!dragEnabled()"
+              (cdkDropListDropped)="onHoldingDrop($event)"
+            >
               @for (row of filteredRows(); track row.id) {
                 <ng-container *ngTemplateOutlet="positionRow; context: { $implicit: row }" />
               }
@@ -200,10 +218,29 @@
           [class.simulated-row]="row.source === 'portfolio' && isSimulating(row.id)"
           [class.row-flash]="feedback.isFlashing('holding-' + row.id)"
           [class.virtual-row]="virtualRow"
+          [class.draggable-row]="isRowDraggable(row)"
+          cdkDrag
+          [cdkDragDisabled]="!isRowDraggable(row)"
+          [cdkDragData]="row"
+          [cdkDragLockAxis]="'y'"
           [appVirtualRowMeasure]="virtualRow ? virtualRow.index : null"
           [measure]="virtualRow ? measureVirtualRow : null"
           [style.transform]="virtualRow ? 'translateY(' + virtualRow.start + 'px)' : null"
         >
+                @if (sortKey() === 'custom') {
+                  <td class="drag-col" data-label="Reorder">
+                    @if (isRowDraggable(row)) {
+                      <button
+                        type="button"
+                        class="drag-handle"
+                        cdkDragHandle
+                        [attr.aria-label]="'Drag to reorder ' + row.ticker"
+                      >
+                        <span aria-hidden="true">⠿</span>
+                      </button>
+                    }
+                  </td>
+                }
                 @if (row.source === 'portfolio' && editingId() === row.id) {
                   <td class="ticker" data-label="Ticker">
                     <span class="ticker-cell">
@@ -350,7 +387,8 @@
   } @else {
     <div class="empty-state">
       <h2>Start your portfolio</h2>
-      <p>Tap a quick-add chip above or enter a ticker manually to get started.</p>
+      <p>Load a pre-filled demo to explore the app, or add your first position manually.</p>
+      <app-get-started-guide [compact]="true" />
     </div>
   }
 </section>

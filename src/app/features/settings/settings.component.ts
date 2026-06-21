@@ -6,6 +6,8 @@ import { ConfirmDialogService } from '../../core/services/confirm-dialog.service
 import { ThemeService } from '../../core/services/theme.service';
 import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { ToastService } from '../../core/services/toast.service';
+import { sha256Hex } from '../../core/utils/file-hash.util';
+import { downloadHoldingsCsv, downloadPortfolioBackup } from '../../core/utils/portfolio-export.util';
 
 @Component({
   selector: 'app-settings',
@@ -35,6 +37,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private apiKeySaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly usingLiveQuotes = this.portfolio.usingLiveQuotes;
+
+  backupHash = signal<string | null>(null);
+  backupHashLabel = signal('');
+  verifying = signal(false);
 
   ngOnInit(): void {
     void this.portfolio.init().then(() => {
@@ -103,25 +109,54 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   async exportBackup(): Promise<void> {
-    const data = await this.portfolio.exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stockcal-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const hash = await downloadPortfolioBackup(this.portfolio, this.toast);
+    this.backupHash.set(hash);
+    this.backupHashLabel.set(`stockcal-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  }
+
+  async onVerifyFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    this.verifying.set(true);
+    try {
+      const text = await file.text();
+      JSON.parse(text);
+      const hash = await sha256Hex(text);
+      this.backupHash.set(hash);
+      this.backupHashLabel.set(file.name);
+      this.toast.success('SHA-256 fingerprint generated — compare with your saved hash');
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        this.toast.error('Invalid JSON file — could not verify backup');
+      } else {
+        this.toast.error('Could not generate fingerprint');
+      }
+    } finally {
+      this.verifying.set(false);
+      input.value = '';
+    }
+  }
+
+  async copyHash(): Promise<void> {
+    const hash = this.backupHash();
+    if (!hash) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(hash);
+      this.toast.success('SHA-256 copied to clipboard');
+    } catch {
+      this.toast.error('Could not copy to clipboard');
+    }
   }
 
   exportCsv(): void {
-    const csv = this.portfolio.exportHoldingsCsv();
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stockcal-holdings-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadHoldingsCsv(this.portfolio);
   }
 
   async onImportFile(event: Event): Promise<void> {

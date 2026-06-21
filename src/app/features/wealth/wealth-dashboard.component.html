@@ -122,8 +122,8 @@
   } @else {
     <div class="empty-state">
       <h2>No holdings yet</h2>
-      <p>Add your first stock to start tracking wealth and portfolio growth over time.</p>
-      <a routerLink="/holdings" class="btn-primary">Add Your First Stock</a>
+      <p>Load a demo portfolio to explore wealth tracking, or add your own positions.</p>
+      <app-get-started-guide [compact]="true" />
     </div>
   }
 </section>

@@ -12,6 +12,23 @@
       </p>
     </div>
     <div class="header-actions">
+      @if (metrics()) {
+        <button
+          type="button"
+          class="btn-secondary"
+          [class.active]="customizeMode()"
+          (click)="toggleCustomizeMode()"
+          [attr.aria-pressed]="customizeMode()"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 8h4V4M16 4v4h4M4 16h4v4M16 20v-4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ customizeMode() ? 'Done' : 'Customize' }}
+        </button>
+        @if (customizeMode()) {
+          <button type="button" class="btn-secondary" (click)="resetLayout()">Reset layout</button>
+        }
+      }
       <button type="button" class="btn-primary" (click)="openQuickAdd()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
@@ -28,6 +45,10 @@
   </header>
 
   @if (metrics(); as m) {
+    @if (customizeMode()) {
+      <p class="customize-hint">Drag widgets by the handle or resize from the edges. Your layout is saved automatically.</p>
+    }
+
     <div class="hero-cards">
       <a routerLink="/wealth" class="hero-card wealth">
         <div class="hero-card-top">
@@ -76,263 +97,317 @@
       </div>
     </div>
 
-    <div class="panel goal-panel">
-      <div class="goal-header">
-        <div>
-          <h2>Income Goal Progress</h2>
-          <p class="goal-summary">
-            <span class="goal-current">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
-            <span class="goal-separator">of</span>
-            <span>{{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo target</span>
-          </p>
-        </div>
-        <div class="goal-percent-wrap">
-          <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
-          <span class="goal-percent-label">complete</span>
-        </div>
-      </div>
-      <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="incomeGoalProgress()" aria-valuemin="0" aria-valuemax="100">
-        <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
-      </div>
-      <a routerLink="/plan" class="panel-action-link">Plan your path to financial independence →</a>
-    </div>
-
-    @if (achievedMilestones().length > 0 || nextMilestones().length > 0) {
-      <div class="panel milestones-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Investor Milestones</h2>
-            <p class="panel-desc">Benchmarks used by serious income and growth investors to measure long-term progress.</p>
-          </div>
-          @if (achievedMilestones().length > 0) {
-            <span class="milestone-count">{{ achievedMilestones().length }} unlocked</span>
-          }
-        </div>
-        @if (achievedMilestones().length > 0) {
-          <div class="milestone-badges">
-            @for (milestone of achievedMilestones(); track milestone.id) {
-              <span class="milestone-badge achieved" [class]="'cat-' + milestone.category">
-                <span class="badge-icon" aria-hidden="true">✓</span>
-                {{ milestone.title }}
-              </span>
-            }
-          </div>
-        }
-        @if (nextMilestones().length > 0) {
-          <div class="milestone-progress-list">
-            @for (milestone of nextMilestones(); track milestone.id) {
-              <div class="milestone-progress-item">
-                <div class="milestone-progress-header">
-                  <strong>{{ milestone.title }}</strong>
-                  <span>{{ milestone.progress | number: '1.0-0' }}%</span>
+    <div class="widget-grid-wrap" [class.editing]="customizeMode()">
+      <gridster [options]="gridOptions()">
+        @for (item of activeLayout(); track item.id) {
+          <gridster-item [item]="item">
+            <div class="widget-panel panel" [class.editing]="customizeMode()">
+              @if (customizeMode()) {
+                <div class="widget-drag-handle" title="Drag to reposition">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="9" cy="6" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="6" r="1.5" fill="currentColor"/>
+                    <circle cx="9" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="9" cy="18" r="1.5" fill="currentColor"/>
+                    <circle cx="15" cy="18" r="1.5" fill="currentColor"/>
+                  </svg>
+                  <span>{{ widgetLabel(item.id) }}</span>
                 </div>
-                <div class="progress-bar mini">
-                  <div class="progress-fill" [style.width.%]="milestone.progress"></div>
-                </div>
-                <small>{{ milestone.description }}</small>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    }
-
-    @if (insights(); as ins) {
-      @if (ins.alerts.length > 0) {
-        <div class="panel insights-preview">
-          <div class="panel-header">
-            <div>
-              <h2>Portfolio Alerts</h2>
-              <p class="panel-desc">Items that may need your attention.</p>
-            </div>
-            <span class="health-pill" [class.good]="ins.healthScore >= 65" [class.warn]="ins.healthScore < 65">
-              Score {{ ins.healthScore }} · {{ ins.healthLabel }}
-            </span>
-          </div>
-          <ul class="mini-alerts">
-            @for (alert of ins.alerts.slice(0, 2); track alert.id) {
-              <li [class]="'alert-' + alert.severity">
-                <strong>{{ alert.title }}</strong>
-                <span>{{ alert.message }}</span>
-              </li>
-            }
-          </ul>
-          <a routerLink="/insights" class="panel-action-link">View full analysis</a>
-        </div>
-      }
-    }
-
-    <div class="two-col">
-      <div class="panel chart-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Asset Allocation</h2>
-            <p class="panel-desc">How your portfolio is distributed across holdings.</p>
-          </div>
-        </div>
-        @if (allocationChart().labels?.length) {
-          <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions()" />
-        } @else {
-          <p class="empty-chart">Add holdings to see your allocation breakdown.</p>
-        }
-      </div>
-
-      <div class="panel holdings-panel">
-        <div class="panel-header">
-          <div>
-            <h2>Top Holdings</h2>
-            <p class="panel-desc">Your largest positions by market value.</p>
-          </div>
-          @if (holdings().length > 5) {
-            <a routerLink="/holdings" class="panel-action-link">View all</a>
-          }
-        </div>
-        <div class="table-wrap">
-          <table class="holdings-table responsive-table">
-            <thead>
-              <tr>
-                <th>Ticker</th>
-                <th class="col-num">Value</th>
-                <th class="col-num">Weight</th>
-                <th class="col-num">Income/yr</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of topHoldings(); track item.holding.id) {
-                <tr>
-                  <td data-label="Ticker">
-                    <span class="ticker-cell">
-                      <app-stock-icon [symbol]="item.holding.ticker" [logoUrl]="item.holding.logoUrl" size="sm" />
-                      <span class="ticker">{{ item.holding.ticker }}</span>
-                    </span>
-                  </td>
-                  <td class="col-num" data-label="Value">{{ item.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                  <td class="col-num" data-label="Weight">{{ item.allocationPercent | number: '1.1-1' }}%</td>
-                  <td class="col-num income" data-label="Income/yr">{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
-                </tr>
               }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
-    <section class="nav-section">
-      <h2 class="section-title">Explore</h2>
-      <div class="nav-cards">
-        <a routerLink="/wealth" class="nav-card">
-          <span class="nav-card-icon wealth" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Wealth Dashboard</strong>
-            <span>Track capital growth and net worth over time</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-        <a routerLink="/paycheck" class="nav-card">
-          <span class="nav-card-icon income" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Income Dashboard</strong>
-            <span>Monitor dividend income and upcoming payouts</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-        <a routerLink="/insights" class="nav-card">
-          <span class="nav-card-icon insights" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-              <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Portfolio Insights</strong>
-            <span>Health score, alerts, and sector breakdown</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-        <a routerLink="/research" class="nav-card">
-          <span class="nav-card-icon research" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
-              <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Stock Research</strong>
-            <span>Deep analysis, techniques, and buy suggestions</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-        <a routerLink="/plan" class="nav-card">
-          <span class="nav-card-icon plan" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Financial Plan</strong>
-            <span>Model your path to financial independence</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-        <a routerLink="/holdings" class="nav-card">
-          <span class="nav-card-icon holdings" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <span class="nav-card-body">
-            <strong>Manage Holdings</strong>
-            <span>Add, edit, and remove your positions</span>
-          </span>
-          <span class="nav-card-arrow" aria-hidden="true">→</span>
-        </a>
-      </div>
-    </section>
+              <div class="widget-content">
+                @switch (item.id) {
+                  @case ('income-goal') {
+                    <div class="goal-header">
+                      <div>
+                        <h2>Income Goal Progress</h2>
+                        <p class="goal-summary">
+                          <span class="goal-current">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                          <span class="goal-separator">of</span>
+                          <span>{{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo target</span>
+                        </p>
+                      </div>
+                      <div class="goal-percent-wrap">
+                        <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
+                        <span class="goal-percent-label">complete</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="incomeGoalProgress()" aria-valuemin="0" aria-valuemax="100">
+                      <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
+                    </div>
+                    <a routerLink="/plan" class="panel-action-link">Plan your path to financial independence →</a>
+                  }
+
+                  @case ('portfolio-growth') {
+                    <div class="panel-header">
+                      <div>
+                        <h2>Portfolio Growth</h2>
+                        <p class="panel-desc">Track capital growth and net worth over time.</p>
+                      </div>
+                      <a routerLink="/wealth" class="panel-action-link">Full wealth view</a>
+                    </div>
+                    @if (snapshots().length > 0) {
+                      <div class="chart-wrap">
+                        <app-chart type="line" [data]="portfolioGrowthChart()" [options]="portfolioGrowthOptions" />
+                      </div>
+                    } @else {
+                      <p class="empty-chart">Refresh prices to start tracking portfolio value history.</p>
+                    }
+                  }
+
+                  @case ('dividend-calendar') {
+                    <div class="panel-header">
+                      <div>
+                        <h2>Dividend Calendar</h2>
+                        <p class="panel-desc">Upcoming payouts across your holdings.</p>
+                      </div>
+                      <a routerLink="/paycheck" class="panel-action-link">Full income view</a>
+                    </div>
+                    @if (sortedSchedules().length > 0) {
+                      <div class="calendar-list">
+                        @for (schedule of sortedSchedules(); track schedule.id) {
+                          <article class="calendar-item">
+                            <div class="calendar-date">
+                              <span class="month">{{ schedule.payDate | date: 'MMM' }}</span>
+                              <span class="day">{{ schedule.payDate | date: 'd' }}</span>
+                            </div>
+                            <div class="calendar-details">
+                              <strong>{{ schedule.ticker }}</strong>
+                              <span>{{ payoutAmount(schedule.ticker, schedule.amountPerShare) | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+                              <small>Ex-date: {{ schedule.exDate | date: 'mediumDate' }}</small>
+                            </div>
+                          </article>
+                        }
+                      </div>
+                    } @else {
+                      <p class="empty-chart">Add dividend-paying holdings to see upcoming payouts.</p>
+                    }
+                  }
+
+                  @case ('asset-allocation') {
+                    <div class="panel-header">
+                      <div>
+                        <h2>Asset Allocation</h2>
+                        <p class="panel-desc">How your portfolio is distributed across holdings.</p>
+                      </div>
+                    </div>
+                    @if (allocationChart().labels?.length) {
+                      <div class="chart-wrap chart-wrap-doughnut">
+                        <app-chart type="doughnut" [data]="allocationChart()" [options]="allocationOptions()" />
+                      </div>
+                    } @else {
+                      <p class="empty-chart">Add holdings to see your allocation breakdown.</p>
+                    }
+                  }
+
+                  @case ('top-holdings') {
+                    <div class="panel-header">
+                      <div>
+                        <h2>Top Holdings</h2>
+                        <p class="panel-desc">Your largest positions by market value.</p>
+                      </div>
+                      @if (holdings().length > 5) {
+                        <a routerLink="/holdings" class="panel-action-link">View all</a>
+                      }
+                    </div>
+                    <div class="table-wrap">
+                      <table class="holdings-table responsive-table">
+                        <thead>
+                          <tr>
+                            <th>Ticker</th>
+                            <th class="col-num">Value</th>
+                            <th class="col-num">Weight</th>
+                            <th class="col-num">Income/yr</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (holding of topHoldings(); track holding.holding.id) {
+                            <tr>
+                              <td data-label="Ticker">
+                                <span class="ticker-cell">
+                                  <app-stock-icon [symbol]="holding.holding.ticker" [logoUrl]="holding.holding.logoUrl" size="sm" />
+                                  <span class="ticker">{{ holding.holding.ticker }}</span>
+                                </span>
+                              </td>
+                              <td class="col-num" data-label="Value">{{ holding.assetValue | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                              <td class="col-num" data-label="Weight">{{ holding.allocationPercent | number: '1.1-1' }}%</td>
+                              <td class="col-num income" data-label="Income/yr">{{ holding.annualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+
+                  @case ('milestones') {
+                    <div class="panel-header">
+                      <div>
+                        <h2>Investor Milestones</h2>
+                        <p class="panel-desc">Benchmarks used by serious income and growth investors to measure long-term progress.</p>
+                      </div>
+                      @if (achievedMilestones().length > 0) {
+                        <span class="milestone-count">{{ achievedMilestones().length }} unlocked</span>
+                      }
+                    </div>
+                    @if (achievedMilestones().length > 0) {
+                      <div class="milestone-badges">
+                        @for (milestone of achievedMilestones(); track milestone.id) {
+                          <span class="milestone-badge achieved" [class]="'cat-' + milestone.category">
+                            <span class="badge-icon" aria-hidden="true">✓</span>
+                            {{ milestone.title }}
+                          </span>
+                        }
+                      </div>
+                    }
+                    @if (nextMilestones().length > 0) {
+                      <div class="milestone-progress-list">
+                        @for (milestone of nextMilestones(); track milestone.id) {
+                          <div class="milestone-progress-item">
+                            <div class="milestone-progress-header">
+                              <strong>{{ milestone.title }}</strong>
+                              <span>{{ milestone.progress | number: '1.0-0' }}%</span>
+                            </div>
+                            <div class="progress-bar mini">
+                              <div class="progress-fill" [style.width.%]="milestone.progress"></div>
+                            </div>
+                            <small>{{ milestone.description }}</small>
+                          </div>
+                        }
+                      </div>
+                    }
+                  }
+
+                  @case ('alerts') {
+                    @if (insights(); as ins) {
+                      <div class="panel-header">
+                        <div>
+                          <h2>Portfolio Alerts</h2>
+                          <p class="panel-desc">Items that may need your attention.</p>
+                        </div>
+                        <span class="health-pill" [class.good]="ins.healthScore >= 65" [class.warn]="ins.healthScore < 65">
+                          Score {{ ins.healthScore }} · {{ ins.healthLabel }}
+                        </span>
+                      </div>
+                      <ul class="mini-alerts">
+                        @for (alert of ins.alerts.slice(0, 2); track alert.id) {
+                          <li [class]="'alert-' + alert.severity">
+                            <strong>{{ alert.title }}</strong>
+                            <span>{{ alert.message }}</span>
+                          </li>
+                        }
+                      </ul>
+                      <a routerLink="/insights" class="panel-action-link">View full analysis</a>
+                    }
+                  }
+
+                  @case ('explore') {
+                    <h2 class="section-title">Explore</h2>
+                    <div class="nav-cards">
+                      <a routerLink="/wealth" class="nav-card">
+                        <span class="nav-card-icon wealth" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Wealth Dashboard</strong>
+                          <span>Track capital growth and net worth over time</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                      <a routerLink="/paycheck" class="nav-card">
+                        <span class="nav-card-icon income" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Income Dashboard</strong>
+                          <span>Monitor dividend income and upcoming payouts</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                      <a routerLink="/insights" class="nav-card">
+                        <span class="nav-card-icon insights" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 8v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Portfolio Insights</strong>
+                          <span>Health score, alerts, and sector breakdown</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                      <a routerLink="/research" class="nav-card">
+                        <span class="nav-card-icon research" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Stock Research</strong>
+                          <span>Deep analysis, techniques, and buy suggestions</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                      <a routerLink="/plan" class="nav-card">
+                        <span class="nav-card-icon plan" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Financial Plan</strong>
+                          <span>Model your path to financial independence</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                      <a routerLink="/holdings" class="nav-card">
+                        <span class="nav-card-icon holdings" aria-hidden="true">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                        <span class="nav-card-body">
+                          <strong>Manage Holdings</strong>
+                          <span>Add, edit, and remove your positions</span>
+                        </span>
+                        <span class="nav-card-arrow" aria-hidden="true">→</span>
+                      </a>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          </gridster-item>
+        }
+      </gridster>
+    </div>
   } @else {
     <div class="welcome-panel">
-      <div class="welcome-icon" aria-hidden="true">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-          <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <div class="welcome-header">
+        <div class="welcome-icon" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="welcome-copy">
+          <p class="eyebrow">Get Started</p>
+          <h2>Welcome, Investor</h2>
+          <p>Your portfolio is empty. Load a pre-filled demo to explore every dashboard instantly, or add your own positions. Everything stays private on your device.</p>
+        </div>
       </div>
-      <h2>Welcome, Investor</h2>
-      <p>Build a professional view of your portfolio — wealth, dividend income, and your path to financial independence. Everything stays private on your device.</p>
 
-      <div class="feature-grid">
-        <div class="feature-item">
-          <strong>Wealth</strong>
-          <span>Track portfolio value & growth</span>
-        </div>
-        <div class="feature-item">
-          <strong>Paycheck</strong>
-          <span>Monitor dividend income</span>
-        </div>
-        <div class="feature-item">
-          <strong>Research</strong>
-          <span>Deep stock analysis &amp; suggestions</span>
-        </div>
-        <div class="feature-item">
-          <strong>Plan</strong>
-          <span>FIRE calculator &amp; projections</span>
-        </div>
-        <div class="feature-item">
-          <strong>Private</strong>
-          <span>Data stays on your device</span>
-        </div>
-      </div>
+      <app-get-started-guide [showManualAdd]="true" (addManually)="openQuickAdd()" />
 
       <div class="quick-start">
-        <h3>Quick start — pick a popular stock</h3>
+        <h3>Or pick a single stock to start</h3>
         <div class="chip-row">
           @for (stock of quickStartStocks; track stock.symbol) {
             <button type="button" class="chip chip-with-icon" (click)="openQuickAdd(stock.symbol)">
@@ -342,14 +417,6 @@
           }
         </div>
       </div>
-
-      <button type="button" class="btn-primary btn-large" (click)="openQuickAdd()">Add Your First Stock</button>
     </div>
   }
-
-  <app-quick-add-holding
-    [open]="showQuickAdd()"
-    [initialTicker]="quickAddTicker()"
-    (closed)="closeQuickAdd()"
-  />
 </section>

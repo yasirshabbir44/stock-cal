@@ -1,16 +1,16 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { ChartData } from 'chart.js';
-import { RouterLink } from '@angular/router';
+import type { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 
 @Component({
   selector: 'app-wealth-dashboard',
   standalone: true,
-  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, RouterLink],
+  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, GetStartedGuideComponent],
   templateUrl: './wealth-dashboard.component.html',
   styleUrl: './wealth-dashboard.component.scss',
 })

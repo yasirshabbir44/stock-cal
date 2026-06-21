@@ -2,24 +2,27 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ChartData } from 'chart.js';
+import type { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { PaycheckViewService } from '../../core/services/paycheck-view.service';
 import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
 import { YieldTrendCellComponent } from '../../shared/components/yield-trend-cell.component';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 
 @Component({
   selector: 'app-paycheck-dashboard',
   standalone: true,
-  imports: [FormsModule, MetricCardComponent, ChartComponent, YieldTrendCellComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [FormsModule, MetricCardComponent, ChartComponent, YieldTrendCellComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe, GetStartedGuideComponent],
   templateUrl: './paycheck-dashboard.component.html',
   styleUrl: './paycheck-dashboard.component.scss',
 })
 export class PaycheckDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
   readonly feedback = inject(SaveFeedbackService);
+  readonly paycheckView = inject(PaycheckViewService);
 
   readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
@@ -33,9 +36,28 @@ export class PaycheckDashboardComponent implements OnInit {
 
   readonly monthlyTotals = computed(() => this.portfolio.monthlyDividendTotals());
 
+  readonly yearlyTotals = computed(() => {
+    const yearly = new Map<string, number>();
+    for (const [monthKey, total] of this.monthlyTotals()) {
+      const year = monthKey.slice(0, 4);
+      yearly.set(year, (yearly.get(year) ?? 0) + total);
+    }
+    return new Map([...yearly.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  });
+
+  readonly dividendChartTotals = computed(() =>
+    this.paycheckView.dividendChartGranularity() === 'yearly'
+      ? this.yearlyTotals()
+      : this.monthlyTotals(),
+  );
+
   readonly chartData = computed<ChartData<'bar'>>(() => {
-    const totals = this.monthlyTotals();
+    const totals = this.dividendChartTotals();
+    const isYearly = this.paycheckView.dividendChartGranularity() === 'yearly';
     const labels = [...totals.keys()].map((key) => {
+      if (isYearly) {
+        return key;
+      }
       const [year, month] = key.split('-');
       return new Date(Number(year), Number(month) - 1).toLocaleDateString(undefined, {
         month: 'short',

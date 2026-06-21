@@ -9,8 +9,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
-
-type ChartJsModule = typeof import('chart.js');
+import { type ChartJsModule, loadChartJs } from '../utils/chart-js.loader';
 
 @Component({
   selector: 'app-chart',
@@ -46,9 +45,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
 
   async ngAfterViewInit(): Promise<void> {
-    const chartJs = await import('chart.js');
-    chartJs.Chart.register(...chartJs.registerables);
-    this.chartJs = chartJs;
+    this.chartJs = await loadChartJs();
     this.viewReady = true;
     this.renderChart();
     this.observeResize();

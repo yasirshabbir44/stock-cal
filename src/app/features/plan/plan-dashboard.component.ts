@@ -2,17 +2,18 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ChartData } from 'chart.js';
+import type { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 
 @Component({
   selector: 'app-plan-dashboard',
   standalone: true,
-  imports: [FormsModule, MetricCardComponent, ChartComponent, RouterLink, CurrencyPipe, DecimalPipe],
+  imports: [FormsModule, MetricCardComponent, ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, GetStartedGuideComponent],
   templateUrl: './plan-dashboard.component.html',
   styleUrl: './plan-dashboard.component.scss',
 })
