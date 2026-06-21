@@ -45,6 +45,21 @@
 
     <button
       type="button"
+      class="command-palette-trigger"
+      (click)="openCommandPalette()"
+      aria-label="Open command palette"
+      title="Command palette (⌘K)"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+      <span class="command-palette-label">Search</span>
+      <kbd class="command-palette-kbd">{{ paletteModKey }}K</kbd>
+    </button>
+
+    <button
+      type="button"
       class="theme-toggle"
       (click)="toggleTheme()"
       [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -132,5 +147,11 @@
 
   <app-toast />
   <app-confirm-dialog />
+  <app-command-palette />
+  <app-quick-add-holding
+    [open]="quickAdd.open()"
+    [initialTicker]="quickAdd.initialTicker()"
+    (closed)="quickAdd.close()"
+  />
   <app-loading-overlay [visible]="loading()" message="Updating portfolio…" />
 </div>

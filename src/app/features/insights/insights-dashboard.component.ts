@@ -2,7 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ChartConfiguration, ChartData } from 'chart.js';
+import type { ChartConfiguration, ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -11,6 +11,7 @@ import { MetricCardComponent } from '../../shared/components/metric-card.compone
 import { StockIconComponent } from '../../shared/components/stock-icon.component';
 import { TickerAutocompleteComponent } from '../../shared/components/ticker-autocomplete.component';
 import { YieldTrendCellComponent } from '../../shared/components/yield-trend-cell.component';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { computeDividendYieldPercent } from '../../core/calculations/dividend-yield.lib';
 import { StockSuggestion } from '../../core/models/stock-search.model';
@@ -28,6 +29,7 @@ import { StockSuggestion } from '../../core/models/stock-search.model';
     RouterLink,
     CurrencyPipe,
     DecimalPipe,
+    GetStartedGuideComponent,
   ],
   templateUrl: './insights-dashboard.component.html',
   styleUrl: './insights-dashboard.component.scss',

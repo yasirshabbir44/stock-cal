@@ -1,5 +1,6 @@
 import { Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DecimalPipe, NgTemplateOutlet, PercentPipe } from '@angular/common';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { injectVirtualizer } from '@tanstack/angular-virtual';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -18,8 +19,9 @@ import { StockIconComponent } from '../../shared/components/stock-icon.component
 import { TickerAutocompleteComponent } from '../../shared/components/ticker-autocomplete.component';
 import { FacetedFilterBarComponent } from '../../shared/components/faceted-filter-bar.component';
 import { VirtualRowMeasureDirective } from '../../shared/directives/virtual-row-measure.directive';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 
-type SortKey = 'ticker' | 'value' | 'income';
+type SortKey = 'ticker' | 'value' | 'income' | 'custom';
 
 /** Enable windowing once the filtered list is large enough to stress the DOM. */
 const VIRTUAL_SCROLL_MIN_ROWS = 50;
@@ -44,6 +46,8 @@ interface QuickPick {
     FacetedFilterBarComponent,
     VirtualRowMeasureDirective,
     RouterLink,
+    GetStartedGuideComponent,
+    DragDropModule,
   ],
   templateUrl: './holdings.component.html',
   styleUrl: './holdings.component.scss',
@@ -160,6 +164,18 @@ export class HoldingsComponent implements OnInit {
     }
 
     const key = this.sortKey();
+    if (key === 'custom') {
+      const order = new Map(this.holdings().map((holding, index) => [holding.id, index]));
+      return [...list].sort((a, b) => {
+        const orderA = a.source === 'portfolio' ? (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+        const orderB = b.source === 'portfolio' ? (order.get(b.id) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.ticker.localeCompare(b.ticker);
+      });
+    }
+
     return [...list].sort((a, b) => {
       if (key === 'ticker') {
         return a.ticker.localeCompare(b.ticker);
@@ -182,7 +198,18 @@ export class HoldingsComponent implements OnInit {
   );
 
   readonly useVirtualScroll = computed(
-    () => this.filteredRows().length >= VIRTUAL_SCROLL_MIN_ROWS,
+    () => this.sortKey() !== 'custom' && this.filteredRows().length >= VIRTUAL_SCROLL_MIN_ROWS,
+  );
+
+  readonly dragEnabled = computed(
+    () =>
+      this.sortKey() === 'custom' &&
+      this.sourceFilter() !== 'watchlist' &&
+      !this.searchQuery().trim() &&
+      this.selectedSectors().size === 0 &&
+      this.selectedFrequencies().size === 0 &&
+      !this.editingId() &&
+      this.holdings().length > 1,
   );
 
   readonly virtualizer = injectVirtualizer(() => ({
@@ -327,6 +354,31 @@ export class HoldingsComponent implements OnInit {
 
   setSort(key: SortKey): void {
     this.sortKey.set(key);
+  }
+
+  isRowDraggable(row: PortfolioTableRow): boolean {
+    return this.dragEnabled() && row.source === 'portfolio';
+  }
+
+  async onHoldingDrop(event: CdkDragDrop<PortfolioTableRow[]>): Promise<void> {
+    if (!this.dragEnabled() || event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    const portfolioCount = this.filteredRows().filter((row) => row.source === 'portfolio').length;
+    if (
+      event.previousIndex >= portfolioCount ||
+      event.currentIndex >= portfolioCount
+    ) {
+      return;
+    }
+
+    const portfolioIds = this.filteredRows()
+      .filter((row) => row.source === 'portfolio')
+      .map((row) => row.id);
+
+    moveItemInArray(portfolioIds, event.previousIndex, event.currentIndex);
+    await this.portfolio.reorderHoldings(portfolioIds);
   }
 
   onSearchChange(query: string): void {

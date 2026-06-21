@@ -28,6 +28,12 @@ import { PortfolioCalculatorService } from './portfolio-calculator.service';
 import { StockApiService } from './stock-api.service';
 import { ToastService } from './toast.service';
 import { getStockLogoUrl } from '../utils/stock-logo.util';
+import { DEMO_PORTFOLIO } from '../constants/demo-portfolio';
+import {
+  nextHoldingSortOrder,
+  normalizeHoldingsSortOrder,
+  sortHoldingsByOrder,
+} from '../utils/holding-order.util';
 
 export interface HoldingUpdate {
   shares: number;
@@ -188,7 +194,13 @@ export class PortfolioFacadeService {
         this.db.getAllWatchlistItems(),
       ]);
 
-      this.holdings.set(holdings);
+      const normalizedHoldings = sortHoldingsByOrder(normalizeHoldingsSortOrder(holdings));
+      const needsSortMigration = holdings.some((h) => h.sortOrder == null);
+      if (needsSortMigration) {
+        await Promise.all(normalizedHoldings.map((h) => this.db.saveHolding(h)));
+      }
+
+      this.holdings.set(normalizedHoldings);
       this.dividendSchedules.set(schedules);
       this.portfolioSnapshots.set(snapshots);
       this.settings.set(settings);
@@ -196,7 +208,7 @@ export class PortfolioFacadeService {
       this.applyApiKeyFromSettings(settings);
       this.initialized = true;
 
-      if (holdings.length > 0) {
+      if (normalizedHoldings.length > 0) {
         await this.refreshMarketData(false);
       }
     } catch (err) {
@@ -239,6 +251,7 @@ export class PortfolioFacadeService {
           annualDividendPerShare: quote.annualDividendPerShare,
           lastUpdated: now,
           createdAt: now,
+          sortOrder: nextHoldingSortOrder(this.holdings()),
         };
 
         await this.persistHoldingMarketData(holding, schedules);
@@ -249,6 +262,77 @@ export class PortfolioFacadeService {
       'Failed to add holding',
       true,
     );
+  }
+
+  async loadDemoPortfolio(): Promise<boolean> {
+    if (this.holdings().length > 0) {
+      this.toast.info('Demo portfolio is only available when you have no holdings');
+      return false;
+    }
+
+    let loaded = false;
+
+    await this.runWithLoading(async () => {
+      const now = new Date().toISOString();
+      const holdings: Holding[] = [];
+      const allSchedules: DividendSchedule[] = [];
+
+      for (const [index, input] of DEMO_PORTFOLIO.holdings.entries()) {
+        const ticker = input.ticker.toUpperCase();
+        const quote = await this.stockApi.fetchQuote(ticker);
+        const schedules = await this.stockApi.fetchUpcomingDividends(ticker);
+
+        const holding: Holding = {
+          id: crypto.randomUUID(),
+          ticker,
+          companyName: input.companyName,
+          logoUrl: getStockLogoUrl(ticker),
+          shares: input.shares,
+          purchasePrice: input.purchasePrice,
+          currentPrice: quote.currentPrice,
+          annualDividendPerShare: quote.annualDividendPerShare,
+          lastUpdated: now,
+          createdAt: now,
+          sortOrder: index,
+        };
+
+        await this.persistHoldingMarketData(holding, schedules);
+        holdings.push(holding);
+        allSchedules.push(...schedules);
+      }
+
+      const watchlist: WatchlistItem[] = [];
+
+      for (const input of DEMO_PORTFOLIO.watchlist) {
+        const ticker = input.ticker.toUpperCase();
+        const quote = await this.stockApi.fetchQuote(ticker);
+
+        const item: WatchlistItem = {
+          id: crypto.randomUUID(),
+          ticker,
+          companyName: input.companyName,
+          logoUrl: getStockLogoUrl(ticker),
+          targetPrice: input.targetPrice,
+          notes: input.notes,
+          currentPrice: quote.currentPrice,
+          annualDividendPerShare: quote.annualDividendPerShare,
+          addedAt: now,
+          lastUpdated: now,
+        };
+
+        await this.db.saveWatchlistItem(item);
+        watchlist.push(item);
+      }
+
+      this.holdings.set(holdings);
+      this.dividendSchedules.set(allSchedules);
+      this.watchlist.set(watchlist);
+      await this.recordSnapshot();
+      this.toast.success('Demo portfolio loaded — explore dashboards and experiment freely');
+      loaded = true;
+    }, 'Failed to load demo portfolio');
+
+    return loaded;
   }
 
   async updateHolding(id: string, update: HoldingUpdate, showToast = true): Promise<void> {
@@ -269,6 +353,31 @@ export class PortfolioFacadeService {
     if (showToast) {
       this.toast.saved(`${holding.ticker} saved to local storage`);
     }
+  }
+
+  async reorderHoldings(orderedIds: string[]): Promise<void> {
+    const byId = new Map(this.holdings().map((holding) => [holding.id, holding]));
+    const reordered: Holding[] = [];
+
+    for (const [index, id] of orderedIds.entries()) {
+      const holding = byId.get(id);
+      if (holding) {
+        reordered.push({ ...holding, sortOrder: index });
+      }
+    }
+
+    for (const holding of this.holdings()) {
+      if (!orderedIds.includes(holding.id)) {
+        reordered.push({ ...holding, sortOrder: reordered.length });
+      }
+    }
+
+    for (const holding of reordered) {
+      await this.db.saveHolding(holding);
+    }
+
+    this.holdings.set(reordered);
+    this.toast.saved('Holdings order saved');
   }
 
   async removeHolding(id: string): Promise<void> {
@@ -319,7 +428,7 @@ export class PortfolioFacadeService {
           await this.persistHoldingMarketData(updated, schedules);
         }
 
-        this.holdings.set(results.map((r) => r.updated));
+        this.holdings.set(sortHoldingsByOrder(results.map((r) => r.updated)));
         this.dividendSchedules.set(results.flatMap((r) => r.schedules));
         await this.recordSnapshot();
       }
@@ -581,7 +690,9 @@ export class PortfolioFacadeService {
 
     await this.db.importPortfolio(data);
 
-    this.holdings.set(data.holdings);
+    const orderedHoldings = sortHoldingsByOrder(normalizeHoldingsSortOrder(data.holdings));
+    await Promise.all(orderedHoldings.map((h) => this.db.saveHolding(h)));
+    this.holdings.set(orderedHoldings);
     this.dividendSchedules.set(data.dividendSchedules ?? []);
     this.portfolioSnapshots.set(data.portfolioSnapshots ?? []);
     this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings, id: 'settings' });

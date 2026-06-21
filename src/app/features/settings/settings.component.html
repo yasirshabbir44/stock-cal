@@ -118,7 +118,10 @@
 
   <div class="panel">
     <h2>Backup &amp; Restore</h2>
-    <p class="panel-desc">Export your portfolio as JSON or CSV. Import JSON on another device or after clearing browser data.</p>
+    <p class="panel-desc">
+      Export your portfolio as JSON or CSV. Import JSON on another device or after clearing browser data.
+      Use Verify Data to generate a SHA-256 fingerprint of a backup file and confirm it has not been corrupted.
+    </p>
     <div class="backup-actions">
       <button type="button" class="btn-secondary" (click)="exportBackup()">↓ Export Backup (JSON)</button>
       <button type="button" class="btn-secondary" (click)="exportCsv()">↓ Export Holdings (CSV)</button>
@@ -126,7 +129,30 @@
         ↑ Import Backup
         <input type="file" accept="application/json,.json" (change)="onImportFile($event)" hidden />
       </label>
+      <label class="btn-secondary file-btn" [class.is-loading]="verifying()">
+        {{ verifying() ? 'Verifying…' : '✓ Verify Data' }}
+        <input
+          type="file"
+          accept="application/json,.json"
+          (change)="onVerifyFile($event)"
+          [disabled]="verifying()"
+          hidden
+        />
+      </label>
     </div>
+    @if (backupHash()) {
+      <div class="hash-result">
+        <div class="hash-meta">
+          <span class="hash-label">SHA-256</span>
+          @if (backupHashLabel()) {
+            <span class="hash-filename">{{ backupHashLabel() }}</span>
+          }
+        </div>
+        <code class="hash-value">{{ backupHash() }}</code>
+        <button type="button" class="btn-secondary hash-copy" (click)="copyHash()">Copy fingerprint</button>
+        <p class="hash-hint">Save this fingerprint when you export. Later, run Verify Data on the same file — matching hashes mean the backup is intact.</p>
+      </div>
+    }
   </div>
 
   <div class="panel">

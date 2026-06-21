@@ -9,8 +9,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import type { ChartConfiguration, ChartData } from 'chart.js';
-
-type ChartJsModule = typeof import('chart.js');
+import { type ChartJsModule, loadChartJs } from '../utils/chart-js.loader';
 
 @Component({
   selector: 'app-sparkline',
@@ -38,9 +37,7 @@ export class SparklineComponent implements AfterViewInit, OnChanges, OnDestroy {
   private viewReady = false;
 
   async ngAfterViewInit(): Promise<void> {
-    const chartJs = await import('chart.js');
-    chartJs.Chart.register(...chartJs.registerables);
-    this.chartJs = chartJs;
+    this.chartJs = await loadChartJs();
     this.viewReady = true;
     this.renderChart();
   }

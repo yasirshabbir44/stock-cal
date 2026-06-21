@@ -110,8 +110,34 @@
     </div>
 
     <div class="panel chart-panel">
-      <h2>Upcoming Dividends by Month</h2>
-      @if (monthlyTotals().size > 0) {
+      <div class="chart-panel-header">
+        <h2>
+          @if (paycheckView.dividendChartGranularity() === 'yearly') {
+            Upcoming Dividends by Year
+          } @else {
+            Upcoming Dividends by Month
+          }
+        </h2>
+        <div class="view-toggle" role="group" aria-label="Dividend chart granularity">
+          <button
+            type="button"
+            class="view-toggle-btn"
+            [class.active]="paycheckView.dividendChartGranularity() === 'monthly'"
+            (click)="paycheckView.setDividendChartGranularity('monthly')"
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            class="view-toggle-btn"
+            [class.active]="paycheckView.dividendChartGranularity() === 'yearly'"
+            (click)="paycheckView.setDividendChartGranularity('yearly')"
+          >
+            Yearly
+          </button>
+        </div>
+      </div>
+      @if (dividendChartTotals().size > 0) {
         <app-chart type="bar" [data]="chartData()" [options]="chartOptions" />
       } @else {
         <p class="empty-chart">No dividend schedules found for your holdings.</p>
@@ -231,8 +257,8 @@
   } @else {
     <div class="empty-state">
       <h2>No income data yet</h2>
-      <p>Add dividend-paying holdings to project your passive income paycheck.</p>
-      <a routerLink="/holdings" class="btn-primary">Add Your First Stock</a>
+      <p>Load a demo portfolio with dividend-paying holdings to project your passive income paycheck.</p>
+      <app-get-started-guide [compact]="true" />
     </div>
   }
 </section>

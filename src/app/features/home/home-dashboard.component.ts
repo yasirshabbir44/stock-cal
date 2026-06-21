@@ -1,24 +1,50 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ChartConfiguration, ChartData } from 'chart.js';
+import type { ChartConfiguration, ChartData } from 'chart.js';
+import {
+  CompactType,
+  DisplayGrid,
+  GridsterComponent,
+  GridsterItemComponent,
+  type GridsterConfig,
+  GridType,
+} from 'angular-gridster2';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { QuickAddService } from '../../core/services/quick-add.service';
+import { DashboardLayoutService } from '../../core/services/dashboard-layout.service';
+import { HOME_DASHBOARD_LAYOUT } from '../../core/constants/home-dashboard-layout';
+import type { DashboardWidgetLayout } from '../../core/models/dashboard-layout.model';
 import { ChartComponent } from '../../shared/components/chart.component';
-import { QuickAddHoldingComponent } from '../../shared/components/quick-add-holding.component';
 import { StockIconComponent } from '../../shared/components/stock-icon.component';
+import { GetStartedGuideComponent } from '../../shared/components/get-started-guide.component';
 import { POPULAR_STOCKS } from '../../core/constants/popular-stocks';
+
+const HOME_DASHBOARD_ID = 'home';
 
 @Component({
   selector: 'app-home-dashboard',
   standalone: true,
-  imports: [ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe, QuickAddHoldingComponent, StockIconComponent],
+  imports: [
+    GridsterComponent,
+    GridsterItemComponent,
+    ChartComponent,
+    RouterLink,
+    CurrencyPipe,
+    DecimalPipe,
+    DatePipe,
+    StockIconComponent,
+    GetStartedGuideComponent,
+  ],
   templateUrl: './home-dashboard.component.html',
   styleUrl: './home-dashboard.component.scss',
 })
 export class HomeDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly theme = inject(ThemeService);
+  private readonly quickAdd = inject(QuickAddService);
+  private readonly layoutService = inject(DashboardLayoutService);
 
   readonly metrics = this.portfolio.metrics;
   readonly insights = this.portfolio.portfolioInsights;
@@ -29,9 +55,30 @@ export class HomeDashboardComponent implements OnInit {
   readonly lastUpdated = this.portfolio.lastUpdated;
   readonly milestones = this.portfolio.portfolioMilestones;
   readonly achievedMilestones = this.portfolio.achievedMilestones;
-  readonly showQuickAdd = signal(false);
-  readonly quickAddTicker = signal('');
+  readonly snapshots = this.portfolio.portfolioSnapshots;
+  readonly schedules = this.portfolio.dividendSchedules;
   readonly quickStartStocks = POPULAR_STOCKS.slice(0, 5);
+  readonly customizeMode = signal(false);
+  readonly layout = signal<DashboardWidgetLayout[]>(
+    this.layoutService.loadLayout(HOME_DASHBOARD_ID, HOME_DASHBOARD_LAYOUT),
+  );
+
+  private saveLayoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly gridOptions = signal<GridsterConfig>(this.buildGridOptions(false));
+
+  readonly activeLayout = computed(() =>
+    this.layout().filter((item) => {
+      if (item.id === 'milestones') {
+        return this.achievedMilestones().length > 0 || this.nextMilestones().length > 0;
+      }
+      if (item.id === 'alerts') {
+        const ins = this.insights();
+        return !!ins && ins.alerts.length > 0;
+      }
+      return true;
+    }),
+  );
 
   readonly topHoldings = computed(() => {
     const metrics = this.metrics();
@@ -64,6 +111,49 @@ export class HomeDashboardComponent implements OnInit {
     };
   });
 
+  readonly portfolioGrowthChart = computed<ChartData<'line'>>(() => {
+    const snapshots = this.snapshots();
+    return {
+      labels: snapshots.map((s) => s.date),
+      datasets: [
+        {
+          label: 'Portfolio Value',
+          data: snapshots.map((s) => s.totalValue),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+        },
+      ],
+    };
+  });
+
+  readonly portfolioGrowthOptions = {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: { parsed: { y: number | null } }) =>
+            `$${(ctx.parsed.y ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        },
+      },
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: (value: string | number) =>
+            `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        },
+      },
+    },
+    maintainAspectRatio: false,
+  };
+
+  readonly sortedSchedules = computed(() =>
+    [...this.schedules()].sort((a, b) => a.payDate.localeCompare(b.payDate)).slice(0, 8),
+  );
+
   readonly nextMilestones = computed(() =>
     this.milestones()
       .filter((m) => !m.achieved)
@@ -72,6 +162,7 @@ export class HomeDashboardComponent implements OnInit {
   );
 
   readonly allocationOptions = computed<ChartConfiguration<'doughnut'>['options']>(() => ({
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'bottom' as const,
@@ -95,17 +186,81 @@ export class HomeDashboardComponent implements OnInit {
     void this.portfolio.ensureProjectionsLoaded();
   }
 
-  openQuickAdd(ticker = ''): void {
-    this.quickAddTicker.set(ticker);
-    this.showQuickAdd.set(true);
+  toggleCustomizeMode(): void {
+    const next = !this.customizeMode();
+    this.customizeMode.set(next);
+    this.gridOptions.set(this.buildGridOptions(next));
   }
 
-  closeQuickAdd(): void {
-    this.showQuickAdd.set(false);
-    this.quickAddTicker.set('');
+  resetLayout(): void {
+    this.layoutService.resetLayout(HOME_DASHBOARD_ID);
+    this.layout.set(HOME_DASHBOARD_LAYOUT.map((item) => ({ ...item })));
+    this.gridOptions.set(this.buildGridOptions(this.customizeMode()));
+  }
+
+  onLayoutChange(): void {
+    this.layout.update((items) => [...items]);
+
+    if (this.saveLayoutTimer) {
+      clearTimeout(this.saveLayoutTimer);
+    }
+
+    this.saveLayoutTimer = setTimeout(() => {
+      this.layoutService.saveLayout(HOME_DASHBOARD_ID, this.layout());
+    }, 300);
+  }
+
+  openQuickAdd(ticker = ''): void {
+    this.quickAdd.show(ticker);
   }
 
   async refresh(): Promise<void> {
     await this.portfolio.refreshMarketData();
+  }
+
+  payoutAmount(ticker: string, amountPerShare: number): number {
+    const holding = this.holdings().find((h) => h.ticker === ticker);
+    return (holding?.shares ?? 0) * amountPerShare;
+  }
+
+  widgetLabel(id: DashboardWidgetLayout['id']): string {
+    const labels: Record<DashboardWidgetLayout['id'], string> = {
+      'income-goal': 'Income Goal',
+      'portfolio-growth': 'Portfolio Growth',
+      'dividend-calendar': 'Dividend Calendar',
+      'asset-allocation': 'Asset Allocation',
+      'top-holdings': 'Top Holdings',
+      milestones: 'Milestones',
+      alerts: 'Portfolio Alerts',
+      explore: 'Explore',
+    };
+    return labels[id];
+  }
+
+  private buildGridOptions(editing: boolean): GridsterConfig {
+    return {
+      gridType: GridType.ScrollVertical,
+      displayGrid: editing ? DisplayGrid.Always : DisplayGrid.None,
+      compactType: CompactType.CompactUp,
+      margin: 12,
+      outerMargin: false,
+      minCols: 12,
+      maxCols: 12,
+      minRows: 1,
+      fixedRowHeight: 96,
+      mobileBreakpoint: 768,
+      pushItems: true,
+      disableWarnings: true,
+      draggable: {
+        enabled: editing,
+        dragHandleClass: 'widget-drag-handle',
+        ignoreContentClass: 'widget-content',
+      },
+      resizable: {
+        enabled: editing,
+      },
+      itemChangeCallback: () => this.onLayoutChange(),
+      itemResizeCallback: () => this.onLayoutChange(),
+    };
   }
 }
