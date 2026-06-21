@@ -111,11 +111,17 @@ const TICKER_PATTERN = /^[A-Z][A-Z0-9.-]{0,9}$/;
         padding: 0.625rem 0.75rem;
         padding-left: 0.5rem;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         background: var(--surface-muted);
         color: var(--text-primary);
         font-size: 1rem;
+        font-family: inherit;
         text-transform: uppercase;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      input:hover:not(:disabled):not(:focus) {
+        border-color: color-mix(in srgb, var(--border) 50%, var(--accent-wealth));
       }
 
       .input-wrap:has(app-stock-icon) input {

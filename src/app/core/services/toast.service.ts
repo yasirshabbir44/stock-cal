@@ -19,8 +19,12 @@ export class ToastService {
     setTimeout(() => this.dismiss(id), durationMs);
   }
 
-  success(message: string): void {
-    this.show(message, 'success');
+  success(message: string, durationMs = 3500): void {
+    this.show(message, 'success', durationMs);
+  }
+
+  saved(message = 'Saved to local storage'): void {
+    this.show(message, 'success', 2200);
   }
 
   error(message: string): void {

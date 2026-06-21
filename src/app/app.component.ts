@@ -46,6 +46,7 @@ export class AppComponent implements OnInit {
 
   readonly metrics = this.portfolio.metrics;
   readonly loading = this.portfolio.loading;
+  readonly hasActiveSimulations = this.portfolio.hasActiveSimulations;
 
   readonly navItems: NavItem[] = [
     { path: '/home', label: 'Home', icon: 'home', exact: true },

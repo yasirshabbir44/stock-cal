@@ -36,24 +36,41 @@ import { ToastService } from '../../core/services/toast.service';
 
       .toast {
         padding: 0.875rem 1rem;
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         font-size: 0.875rem;
         font-weight: 500;
         cursor: pointer;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        box-shadow: var(--shadow-md);
         animation: slideIn 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .toast::before {
+        content: '';
+        flex-shrink: 0;
+        width: 0.375rem;
+        height: 0.375rem;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.7;
+      }
+
+      .success::before {
+        opacity: 1;
       }
 
       .success {
-        background: #14532d;
-        color: #bbf7d0;
-        border: 1px solid #22c55e;
+        background: var(--toast-success-bg);
+        color: var(--toast-success-text);
+        border: 1px solid var(--toast-success-border);
       }
 
       .error {
-        background: #450a0a;
-        color: #fecaca;
-        border: 1px solid #ef4444;
+        background: var(--toast-error-bg);
+        color: var(--toast-error-text);
+        border: 1px solid var(--toast-error-border);
       }
 
       .info {

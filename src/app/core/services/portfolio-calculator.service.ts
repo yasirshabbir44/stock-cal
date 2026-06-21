@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { computeYieldOnCostPercent } from '../calculations/dividend-yield.lib';
 import { Holding } from '../models/holding.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
 import { HoldingMetrics, PortfolioMetrics } from '../models/portfolio-metrics.model';
@@ -12,10 +13,10 @@ export class PortfolioCalculatorService {
     const assetGrowthPercent =
       costBasis > 0 ? ((holding.currentPrice - holding.purchasePrice) / holding.purchasePrice) * 100 : 0;
     const annualDividendIncome = holding.annualDividendPerShare * holding.shares;
-    const yieldOnCostPercent =
-      holding.purchasePrice > 0
-        ? (holding.annualDividendPerShare / holding.purchasePrice) * 100
-        : 0;
+    const yieldOnCostPercent = computeYieldOnCostPercent(
+      holding.annualDividendPerShare,
+      holding.purchasePrice,
+    );
 
     return {
       holding,

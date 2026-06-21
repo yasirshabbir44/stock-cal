@@ -77,71 +77,76 @@
         <label class="control">
           <div class="control-header">
             <span class="control-label">Monthly contribution</span>
-            <span class="control-value">{{ monthlyContribution() | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+            <span class="control-value" [class.value-flash]="feedback.isFlashing('monthlyContribution')">{{ monthlyContribution() | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
           </div>
           <input
             type="range"
+            class="form-range"
             min="0"
             max="5000"
             step="50"
             [ngModel]="monthlyContribution()"
-            (ngModelChange)="monthlyContribution.set(+$event)"
+            (ngModelChange)="onMonthlyContributionChange($event)"
           />
         </label>
         <label class="control">
           <div class="control-header">
             <span class="control-label">Dividend growth rate</span>
-            <span class="control-value">{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
+            <span class="control-value" [class.value-flash]="feedback.isFlashing('dividendGrowthRate')">{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
           </div>
           <input
             type="range"
+            class="form-range"
             min="0"
             max="15"
             step="0.5"
             [ngModel]="dividendGrowthRate()"
-            (ngModelChange)="dividendGrowthRate.set(+$event)"
+            (ngModelChange)="onDividendGrowthChange($event)"
           />
         </label>
         <label class="control">
           <div class="control-header">
             <span class="control-label">Portfolio growth rate</span>
-            <span class="control-value">{{ portfolioGrowthRate() | number: '1.1-1' }}%/yr</span>
+            <span class="control-value" [class.value-flash]="feedback.isFlashing('portfolioGrowthRate')">{{ portfolioGrowthRate() | number: '1.1-1' }}%/yr</span>
           </div>
           <input
             type="range"
+            class="form-range"
             min="0"
             max="15"
             step="0.5"
             [ngModel]="portfolioGrowthRate()"
-            (ngModelChange)="portfolioGrowthRate.set(+$event)"
+            (ngModelChange)="onPortfolioGrowthChange($event)"
           />
         </label>
         <label class="control">
           <div class="control-header">
             <span class="control-label">Safe withdrawal rate</span>
-            <span class="control-value">{{ withdrawalRate() | number: '1.2-2' }}%</span>
+            <span class="control-value" [class.value-flash]="feedback.isFlashing('withdrawalRate')">{{ withdrawalRate() | number: '1.2-2' }}%</span>
           </div>
           <input
             type="range"
+            class="form-range"
             min="2"
             max="6"
             step="0.25"
             [ngModel]="withdrawalRate()"
-            (ngModelChange)="withdrawalRate.set(+$event)"
+            (ngModelChange)="onWithdrawalRateChange($event)"
           />
         </label>
         <label class="control">
           <div class="control-header">
             <span class="control-label">Projection horizon</span>
-            <span class="control-value">{{ projectionYears() }} years</span>
+            <span class="control-value" [class.value-flash]="feedback.isFlashing('projectionYears')">{{ projectionYears() }} years</span>
           </div>
           <input
             type="range"
+            class="form-range"
             min="5"
             max="40"
             step="1"
             [ngModel]="projectionYears()"
-            (ngModelChange)="projectionYears.set(+$event)"
+            (ngModelChange)="onProjectionYearsChange($event)"
           />
         </label>
       </div>

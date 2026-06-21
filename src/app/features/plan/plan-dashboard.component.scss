@@ -4,7 +4,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #8b5cf6;
+  color: var(--accent-plan);
 }
 
 .dashboard-header {
@@ -97,14 +97,14 @@
 .control-value {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #8b5cf6;
+  color: var(--accent-plan);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
-.control input[type='range'] {
+.control input[type='range'],
+.control .form-range {
   width: 100%;
-  accent-color: #8b5cf6;
 }
 
 .two-col {

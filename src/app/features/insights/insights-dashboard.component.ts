@@ -10,6 +10,9 @@ import { ChartComponent } from '../../shared/components/chart.component';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { StockIconComponent } from '../../shared/components/stock-icon.component';
 import { TickerAutocompleteComponent } from '../../shared/components/ticker-autocomplete.component';
+import { YieldTrendCellComponent } from '../../shared/components/yield-trend-cell.component';
+import { SaveFeedbackService } from '../../core/services/save-feedback.service';
+import { computeDividendYieldPercent } from '../../core/calculations/dividend-yield.lib';
 import { StockSuggestion } from '../../core/models/stock-search.model';
 
 @Component({
@@ -21,6 +24,7 @@ import { StockSuggestion } from '../../core/models/stock-search.model';
     MetricCardComponent,
     StockIconComponent,
     TickerAutocompleteComponent,
+    YieldTrendCellComponent,
     RouterLink,
     CurrencyPipe,
     DecimalPipe,
@@ -31,6 +35,7 @@ import { StockSuggestion } from '../../core/models/stock-search.model';
 export class InsightsDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly theme = inject(ThemeService);
+  readonly feedback = inject(SaveFeedbackService);
 
   readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
@@ -103,6 +108,8 @@ export class InsightsDashboardComponent implements OnInit {
       targetPrice: this.watchTargetPrice(),
     });
 
+    this.feedback.flash('watchlist-form');
+
     this.watchTicker.set('');
     this.watchTargetPrice.set(undefined);
     this.watchSelectedStock.set(null);
@@ -128,6 +135,7 @@ export class InsightsDashboardComponent implements OnInit {
     }
 
     await this.portfolio.promoteWatchlistToHolding(id, shares, price);
+    this.feedback.flash(`promote-${id}`);
     this.cancelPromote();
   }
 
@@ -144,6 +152,10 @@ export class InsightsDashboardComponent implements OnInit {
       return null;
     }
     return ((item.currentPrice - item.targetPrice) / item.targetPrice) * 100;
+  }
+
+  dividendYield(item: { annualDividendPerShare: number; currentPrice: number }): number {
+    return computeDividendYieldPercent(item.annualDividendPerShare, item.currentPrice);
   }
 
   healthScoreColor(score: number): string {

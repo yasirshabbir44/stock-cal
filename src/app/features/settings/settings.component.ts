@@ -4,6 +4,7 @@ import { GITHUB_REPO_URL } from '../../core/constants/app-links';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { ToastService } from '../../core/services/toast.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { ToastService } from '../../core/services/toast.service';
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly confirm = inject(ConfirmDialogService);
+  readonly feedback = inject(SaveFeedbackService);
   private readonly toast = inject(ToastService);
   readonly theme = inject(ThemeService);
   readonly githubRepoUrl = GITHUB_REPO_URL;
@@ -67,6 +69,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     try {
       await this.portfolio.updateMonthlyIncomeGoal(this.monthlyGoal, false);
       this.saved.set(true);
+      this.feedback.persisted('settings-goal', 'Saved to local storage', false);
     } finally {
       this.saving.set(false);
     }
@@ -89,6 +92,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     try {
       await this.portfolio.updateFinnhubApiKey(this.finnhubApiKey, false);
       this.apiKeySaved.set(true);
+      this.feedback.persisted('settings-api-key', 'Saved to local storage', false);
     } finally {
       this.apiKeySaving.set(false);
     }

@@ -109,6 +109,20 @@
   color: var(--accent-income);
 }
 
+.sim-indicator {
+  display: inline-block;
+  margin-left: 0.375rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 3px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  background: rgba(212, 168, 67, 0.2);
+  color: var(--accent-gold);
+}
+
 .nav-links {
   display: flex;
   gap: 0.125rem;
