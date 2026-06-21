@@ -9,6 +9,7 @@ import { PortfolioInsights, IncomeProjectionYear } from '../models/portfolio-ins
 import { WatchlistItem, WatchlistItemInput } from '../models/watchlist-item.model';
 import { DEFAULT_SETTINGS, PortfolioExport, UserSettings } from '../models/user-settings.model';
 import {
+  getPortfolioProjectionLibSync,
   loadPortfolioProjectionLib,
   type PortfolioProjectionLib,
 } from '../calculations/portfolio-projection.loader';
@@ -65,7 +66,7 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioInsights = computed<PortfolioInsights | null>(() => {
-    const lib = this.projectionLib();
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return null;
@@ -83,7 +84,7 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioMilestones = computed(() => {
-    const lib = this.projectionLib();
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return [];
@@ -96,7 +97,7 @@ export class PortfolioFacadeService {
   );
 
   readonly benchmarkComparison = computed(() => {
-    const lib = this.projectionLib();
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return null;
@@ -407,7 +408,8 @@ export class PortfolioFacadeService {
   }
 
   ensureProjectionsLoaded(): Promise<void> {
-    if (this.projectionLib()) {
+    const synced = this.syncProjectionLibFromCache();
+    if (synced) {
       return Promise.resolve();
     }
 
@@ -419,10 +421,25 @@ export class PortfolioFacadeService {
     return this.projectionLoadPromise.then(() => undefined);
   }
 
-  projectIncome(years = 5, dividendGrowthRatePercent = 5): IncomeProjectionYear[] {
-    const lib = this.projectionLib();
+  private syncProjectionLibFromCache(): PortfolioProjectionLib | null {
+    const cached = this.projectionLib() ?? getPortfolioProjectionLibSync();
+    if (cached && !this.projectionLib()) {
+      this.projectionLib.set(cached);
+    }
+    return cached;
+  }
+
+  private getProjectionLib(): PortfolioProjectionLib | null {
+    const lib = this.syncProjectionLibFromCache();
     if (!lib) {
       void this.ensureProjectionsLoaded();
+    }
+    return lib;
+  }
+
+  projectIncome(years = 5, dividendGrowthRatePercent = 5): IncomeProjectionYear[] {
+    const lib = this.getProjectionLib();
+    if (!lib) {
       return [];
     }
 
@@ -436,10 +453,9 @@ export class PortfolioFacadeService {
     portfolioGrowthRatePercent: number,
     withdrawalRatePercent: number,
   ): FirePlanSummary {
-    const lib = this.projectionLib();
+    const lib = this.getProjectionLib();
     const metrics = this.metrics();
     if (!lib) {
-      void this.ensureProjectionsLoaded();
       return {
         freedomNumber: 0,
         yearsToGoal: null,
@@ -473,9 +489,8 @@ export class PortfolioFacadeService {
     portfolioGrowthRatePercent: number,
     years: number,
   ): FireProjectionYear[] {
-    const lib = this.projectionLib();
+    const lib = this.getProjectionLib();
     if (!lib) {
-      void this.ensureProjectionsLoaded();
       return [];
     }
 
