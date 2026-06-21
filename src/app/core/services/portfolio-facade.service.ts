@@ -66,7 +66,7 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioInsights = computed<PortfolioInsights | null>(() => {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return null;
@@ -84,7 +84,7 @@ export class PortfolioFacadeService {
   });
 
   readonly portfolioMilestones = computed(() => {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return [];
@@ -97,7 +97,7 @@ export class PortfolioFacadeService {
   );
 
   readonly benchmarkComparison = computed(() => {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     const metrics = this.metrics();
     if (!lib || !metrics) {
       return null;
@@ -429,16 +429,8 @@ export class PortfolioFacadeService {
     return cached;
   }
 
-  private getProjectionLib(): PortfolioProjectionLib | null {
-    const lib = this.syncProjectionLibFromCache();
-    if (!lib) {
-      void this.ensureProjectionsLoaded();
-    }
-    return lib;
-  }
-
   projectIncome(years = 5, dividendGrowthRatePercent = 5): IncomeProjectionYear[] {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     if (!lib) {
       return [];
     }
@@ -453,7 +445,7 @@ export class PortfolioFacadeService {
     portfolioGrowthRatePercent: number,
     withdrawalRatePercent: number,
   ): FirePlanSummary {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     const metrics = this.metrics();
     if (!lib) {
       return {
@@ -489,7 +481,7 @@ export class PortfolioFacadeService {
     portfolioGrowthRatePercent: number,
     years: number,
   ): FireProjectionYear[] {
-    const lib = this.getProjectionLib();
+    const lib = this.projectionLib();
     if (!lib) {
       return [];
     }
