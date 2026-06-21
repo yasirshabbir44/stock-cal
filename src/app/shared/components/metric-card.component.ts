@@ -1,10 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { Component, ElementRef, HostListener, Input, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { SparklineComponent } from './sparkline.component';
 
 @Component({
   selector: 'app-metric-card',
   standalone: true,
-  imports: [DecimalPipe, CurrencyPipe],
+  imports: [DecimalPipe, CurrencyPipe, SparklineComponent],
   template: `
     <article
       class="metric-card"
@@ -13,8 +14,31 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
       [class.accent-wealth]="accent === 'wealth'"
       [class.accent-income]="accent === 'income'"
       [class.accent-gold]="accent === 'gold'"
+      [class.formula-open]="showFormula"
     >
-      <p class="metric-label">{{ label }}</p>
+      <div class="metric-label-row">
+        <p class="metric-label">{{ label }}</p>
+        @if (formula) {
+          <button
+            type="button"
+            class="formula-info-btn"
+            [attr.aria-label]="'How ' + label + ' is calculated'"
+            [attr.aria-expanded]="showFormula"
+            (click)="toggleFormula($event)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+              <path d="M12 10v6M12 7h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+          @if (showFormula) {
+            <div class="formula-popover" role="tooltip" (click)="$event.stopPropagation()">
+              <p class="formula-heading">Formula</p>
+              <p class="formula-text">{{ formula }}</p>
+            </div>
+          }
+        }
+      </div>
       <p class="metric-value">
         @if (textValue) {
           {{ textValue }}
@@ -26,6 +50,9 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
           {{ value | number: '1.0-2' }}
         }
       </p>
+      @if (sparklineData.length >= 2) {
+        <app-sparkline [data]="sparklineData" [color]="sparklineColor" />
+      }
       @if (subtitle) {
         <p class="metric-subtitle">{{ subtitle }}</p>
       }
@@ -42,6 +69,11 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      }
+
+      .metric-card.formula-open {
+        overflow: visible;
+        z-index: 2;
       }
 
       .metric-card::before {
@@ -69,13 +101,74 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
         transform: translateY(-1px);
       }
 
+      .metric-label-row {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        margin-bottom: 0.625rem;
+      }
+
       .metric-label {
-        margin: 0 0 0.625rem;
+        margin: 0;
         font-size: 0.6875rem;
         font-weight: 700;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
+      }
+
+      .formula-info-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 1.125rem;
+        height: 1.125rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: color 0.15s, background 0.15s;
+      }
+
+      .formula-info-btn:hover,
+      .formula-info-btn:focus-visible {
+        color: var(--accent-wealth);
+        background: var(--accent-wealth-muted);
+        outline: none;
+      }
+
+      .formula-popover {
+        position: absolute;
+        top: calc(100% + 0.375rem);
+        left: 0;
+        z-index: 10;
+        min-width: 14rem;
+        max-width: min(18rem, calc(100vw - 2rem));
+        padding: 0.75rem 0.875rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-elevated);
+        box-shadow: var(--shadow-md);
+      }
+
+      .formula-heading {
+        margin: 0 0 0.375rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      .formula-text {
+        margin: 0;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+        color: var(--text-primary);
       }
 
       .metric-value {
@@ -121,13 +214,41 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
   ],
 })
 export class MetricCardComponent {
+  private readonly elementRef = inject(ElementRef);
+
   @Input({ required: true }) label!: string;
   @Input({ required: true }) value!: number;
   @Input() textValue = '';
   @Input() subtitle = '';
+  @Input() formula = '';
   @Input() isCurrency = false;
   @Input() isPercent = false;
   @Input() positive = false;
   @Input() negative = false;
   @Input() accent: 'wealth' | 'income' | 'gold' | '' = '';
+  @Input() sparklineData: number[] = [];
+  @Input() sparklineColor = '#10b981';
+
+  showFormula = false;
+
+  toggleFormula(event: Event): void {
+    event.stopPropagation();
+    this.showFormula = !this.showFormula;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.showFormula) {
+      return;
+    }
+
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.showFormula = false;
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.showFormula = false;
+  }
 }

@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { ChartData } from 'chart.js';
 import { RouterLink } from '@angular/router';
+import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
@@ -16,6 +17,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 export class WealthDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
 
+  readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
   readonly snapshots = this.portfolio.portfolioSnapshots;
   readonly benchmark = this.portfolio.benchmarkComparison;

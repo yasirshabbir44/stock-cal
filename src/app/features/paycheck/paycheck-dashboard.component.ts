@@ -3,6 +3,7 @@ import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
+import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
@@ -17,11 +18,13 @@ import { ChartComponent } from '../../shared/components/chart.component';
 export class PaycheckDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
 
+  readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
   readonly schedules = this.portfolio.dividendSchedules;
   readonly settings = this.portfolio.settings;
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
   readonly loading = this.portfolio.loading;
+  readonly snapshots = this.portfolio.portfolioSnapshots;
 
   readonly monthlyTotals = computed(() => this.portfolio.monthlyDividendTotals());
 
@@ -78,9 +81,127 @@ export class PaycheckDashboardComponent implements OnInit {
     if (!m || m.holdings.length === 0) {
       return 0;
     }
-    const total = m.holdings.reduce((sum, h) => sum + h.yieldOnCostPercent, 0);
-    return total / m.holdings.length;
+    return m.holdings.reduce((sum, h) => sum + h.yieldOnCostPercent, 0) / m.holdings.length;
   });
+
+  readonly incomeHistory = computed(() => {
+    const m = this.metrics();
+    const today = new Date().toISOString().slice(0, 10);
+
+    const points = this.snapshots()
+      .filter((s) => s.annualDividendIncome != null)
+      .map((s) => ({
+        date: s.date,
+        income: s.annualDividendIncome!,
+        yieldOnCost: s.averageYieldOnCostPercent ?? 0,
+      }));
+
+    if (m) {
+      const last = points[points.length - 1];
+      if (!last || last.date !== today) {
+        points.push({
+          date: today,
+          income: m.totalAnnualDividendIncome,
+          yieldOnCost: this.averageYieldOnCost(),
+        });
+      } else if (last.income !== m.totalAnnualDividendIncome) {
+        last.income = m.totalAnnualDividendIncome;
+        last.yieldOnCost = this.averageYieldOnCost();
+      }
+    }
+
+    return points;
+  });
+
+  readonly incomeSparkline = computed(() => this.incomeHistory().map((p) => p.income));
+
+  readonly yieldOnCostSparkline = computed(() => this.incomeHistory().map((p) => p.yieldOnCost));
+
+  readonly incomeGrowthPercent = computed(() => {
+    const history = this.incomeHistory();
+    if (history.length < 2) {
+      return null;
+    }
+    const first = history[0].income;
+    const last = history[history.length - 1].income;
+    if (first <= 0) {
+      return null;
+    }
+    return ((last - first) / first) * 100;
+  });
+
+  readonly incomeTrendChart = computed<ChartData<'line'>>(() => {
+    const history = this.incomeHistory();
+    return {
+      labels: history.map((p) =>
+        new Date(p.date + 'T00:00:00').toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: '2-digit',
+        }),
+      ),
+      datasets: [
+        {
+          label: 'Annual Income',
+          data: history.map((p) => p.income),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Avg Yield on Cost',
+          data: history.map((p) => p.yieldOnCost),
+          borderColor: '#f59e0b',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 3,
+          borderDash: [4, 3],
+          yAxisID: 'y1',
+        },
+      ],
+    };
+  });
+
+  readonly incomeTrendOptions = {
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top' as const,
+        labels: { boxWidth: 12, padding: 16 },
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) => {
+            const val = ctx.parsed.y ?? 0;
+            if (ctx.dataset.label === 'Avg Yield on Cost') {
+              return `${ctx.dataset.label}: ${val.toFixed(2)}%`;
+            }
+            return `${ctx.dataset.label}: $${val.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        position: 'left' as const,
+        ticks: {
+          callback: (value: string | number) =>
+            `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+        },
+      },
+      y1: {
+        position: 'right' as const,
+        grid: { drawOnChartArea: false },
+        ticks: {
+          callback: (value: string | number) => `${Number(value).toFixed(1)}%`,
+        },
+      },
+    },
+  };
 
   readonly dividendGrowthRate = signal(5);
 
@@ -126,7 +247,7 @@ export class PaycheckDashboardComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    void this.portfolio.init();
+    void this.portfolio.init().then(() => this.portfolio.ensureTodayIncomeSnapshot());
     void this.portfolio.ensureProjectionsLoaded();
   }
 

@@ -68,6 +68,39 @@
   min-height: 360px;
 }
 
+.income-trend-panel .trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.income-trend-panel .panel-desc {
+  margin: 0.375rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.growth-badge {
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.growth-badge.positive {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.growth-badge.negative {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
 .empty-chart {
   color: var(--text-muted);
   padding: 2rem 0;

@@ -51,18 +51,21 @@
           [positive]="m.totalUnrealizedGainLoss >= 0"
           [negative]="m.totalUnrealizedGainLoss < 0"
           subtitle="Market value minus cost basis"
+          [formula]="formulas.unrealizedGainLoss"
         />
         <app-metric-card
           label="Portfolio Yield"
           [value]="m.portfolioDividendYieldPercent"
           [isPercent]="true"
           subtitle="Annual dividends / portfolio value"
+          [formula]="formulas.portfolioDividendYield"
         />
         <app-metric-card
           label="Annual Income"
           [value]="m.totalAnnualDividendIncome"
           [isCurrency]="true"
           subtitle="Projected from current holdings"
+          [formula]="formulas.projectedAnnualIncome"
         />
       </div>
 

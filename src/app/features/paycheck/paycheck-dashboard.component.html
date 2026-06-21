@@ -30,31 +30,65 @@
         [value]="upcomingTotal()"
         [isCurrency]="true"
         subtitle="Expected dividend payouts"
+        [formula]="formulas.next30DaysDividends"
       />
       <app-metric-card
         label="Projected Annual Income"
         [value]="m.totalAnnualDividendIncome"
         [isCurrency]="true"
         subtitle="DPS × Shares (all holdings)"
+        [formula]="formulas.projectedAnnualIncome"
+        accent="income"
+        [sparklineData]="incomeSparkline()"
+        sparklineColor="#10b981"
       />
       <app-metric-card
         label="Projected Monthly Income"
         [value]="m.projectedMonthlyIncome"
         [isCurrency]="true"
         subtitle="Annual income ÷ 12"
+        [formula]="formulas.projectedMonthlyIncome"
       />
       <app-metric-card
         label="Portfolio Dividend Yield"
         [value]="m.portfolioDividendYieldPercent"
         [isPercent]="true"
         subtitle="Annual income / portfolio value"
+        [formula]="formulas.portfolioDividendYield"
       />
       <app-metric-card
         label="Avg Yield on Cost"
         [value]="averageYieldOnCost()"
         [isPercent]="true"
         subtitle="DPS / original purchase price"
+        [formula]="formulas.averageYieldOnCost"
+        accent="gold"
+        [sparklineData]="yieldOnCostSparkline()"
+        sparklineColor="#f59e0b"
       />
+    </div>
+
+    <div class="panel chart-panel income-trend-panel">
+      <div class="trend-header">
+        <div>
+          <h2>Yield on Cost &amp; Income Growth</h2>
+          <p class="panel-desc">
+            Track how your passive income and yield on cost grow as you hold and add dividend stocks.
+          </p>
+        </div>
+        @if (incomeGrowthPercent(); as growth) {
+          <span class="growth-badge" [class.positive]="growth >= 0" [class.negative]="growth < 0">
+            {{ growth >= 0 ? '+' : '' }}{{ growth | number: '1.1-1' }}% income growth
+          </span>
+        }
+      </div>
+      @if (incomeHistory().length >= 2) {
+        <app-chart type="line" [data]="incomeTrendChart()" [options]="incomeTrendOptions" />
+      } @else {
+        <p class="empty-chart">
+          Income history builds automatically as you refresh prices and update holdings. Check back after a few days to see your trend line.
+        </p>
+      }
     </div>
 
     <div class="panel chart-panel">

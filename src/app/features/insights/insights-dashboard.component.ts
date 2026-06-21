@@ -3,6 +3,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ChartConfiguration, ChartData } from 'chart.js';
+import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ChartComponent } from '../../shared/components/chart.component';
@@ -31,6 +32,7 @@ export class InsightsDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly theme = inject(ThemeService);
 
+  readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
   readonly insights = this.portfolio.portfolioInsights;
   readonly watchlist = this.portfolio.watchlist;
