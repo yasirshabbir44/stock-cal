@@ -28,6 +28,14 @@ export class PortfolioCalculatorService {
     };
   }
 
+  computeAverageYieldOnCost(metrics: PortfolioMetrics): number {
+    if (metrics.holdings.length === 0) {
+      return 0;
+    }
+    const total = metrics.holdings.reduce((sum, h) => sum + h.yieldOnCostPercent, 0);
+    return total / metrics.holdings.length;
+  }
+
   computePortfolioMetrics(holdings: Holding[]): PortfolioMetrics {
     const holdingMetrics = holdings.map((h) => this.computeHoldingMetrics(h));
     const totalPortfolioValue = holdingMetrics.reduce((sum, m) => sum + m.assetValue, 0);

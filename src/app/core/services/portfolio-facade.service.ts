@@ -722,6 +722,20 @@ export class PortfolioFacadeService {
     this.metrics.set(this.calculator.computePortfolioMetrics(holdings));
   }
 
+  async ensureTodayIncomeSnapshot(): Promise<void> {
+    if (this.holdings().length === 0) {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = this.portfolioSnapshots().find((s) => s.id === today);
+    if (existing?.annualDividendIncome != null) {
+      return;
+    }
+
+    await this.recordSnapshot();
+  }
+
   private async recordSnapshot(): Promise<void> {
     const metrics = this.calculator.computePortfolioMetrics(this.holdings());
     const today = new Date().toISOString().slice(0, 10);
@@ -730,6 +744,8 @@ export class PortfolioFacadeService {
       id: today,
       date: today,
       totalValue: metrics.totalPortfolioValue,
+      annualDividendIncome: metrics.totalAnnualDividendIncome,
+      averageYieldOnCostPercent: this.calculator.computeAverageYieldOnCost(metrics),
     };
 
     await this.db.upsertPortfolioSnapshot(snapshot);

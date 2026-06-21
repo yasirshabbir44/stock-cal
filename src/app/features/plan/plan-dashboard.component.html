@@ -44,24 +44,28 @@
           [value]="plan.freedomNumber"
           [isCurrency]="true"
           [subtitle]="'Portfolio needed at ' + plan.withdrawalRatePercent + '% withdrawal'"
+          [formula]="formulas.freedomNumber"
         />
         <app-metric-card
           label="Years to Goal"
           [value]="firePlan().yearsToGoal ?? 0"
           [textValue]="yearsToGoalDisplay()"
           [subtitle]="yearsToGoalLabel()"
+          [formula]="formulas.yearsToGoal"
         />
         <app-metric-card
           label="Current Monthly Income"
           [value]="m.projectedMonthlyIncome"
           [isCurrency]="true"
           [subtitle]="incomeGoalSubtitle()"
+          [formula]="formulas.projectedMonthlyIncome"
         />
         <app-metric-card
           label="Portfolio Value"
           [value]="m.totalPortfolioValue"
           [isCurrency]="true"
           [subtitle]="freedomProgressSubtitle()"
+          [formula]="formulas.totalPortfolioValue"
         />
       </div>
     }

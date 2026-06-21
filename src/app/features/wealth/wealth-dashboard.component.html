@@ -17,12 +17,14 @@
         [value]="m.totalPortfolioValue"
         [isCurrency]="true"
         subtitle="Current Price × Shares"
+        [formula]="formulas.totalPortfolioValue"
       />
       <app-metric-card
         label="Total Cost Basis"
         [value]="m.totalCostBasis"
         [isCurrency]="true"
         subtitle="Original capital invested"
+        [formula]="formulas.totalCostBasis"
       />
       <app-metric-card
         label="Asset Growth"
@@ -31,6 +33,7 @@
         [positive]="m.totalAssetGrowthPercent >= 0"
         [negative]="m.totalAssetGrowthPercent < 0"
         subtitle="(Current Value − Cost Basis) / Cost Basis"
+        [formula]="formulas.assetGrowth"
       />
       <app-metric-card
         label="Unrealized P&L"
@@ -39,6 +42,7 @@
         [positive]="m.totalUnrealizedGainLoss >= 0"
         [negative]="m.totalUnrealizedGainLoss < 0"
         subtitle="Market value minus cost basis"
+        [formula]="formulas.unrealizedGainLoss"
       />
     </div>
 

@@ -3,6 +3,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
+import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
@@ -17,6 +18,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 export class PlanDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
 
+  readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
   readonly settings = this.portfolio.settings;
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
