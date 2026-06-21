@@ -8,15 +8,9 @@ import {
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
-import {
-  Chart,
-  ChartConfiguration,
-  ChartData,
-  ChartType,
-  registerables,
-} from 'chart.js';
+import type { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 
-Chart.register(...registerables);
+type ChartJsModule = typeof import('chart.js');
 
 @Component({
   selector: 'app-chart',
@@ -45,12 +39,16 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() options: ChartConfiguration['options'] = {};
   @Input() height = 280;
 
-  private chart: Chart | null = null;
+  private chartJs: ChartJsModule | null = null;
+  private chart: InstanceType<ChartJsModule['Chart']> | null = null;
   private chartType: ChartType | null = null;
   private viewReady = false;
   private resizeObserver: ResizeObserver | null = null;
 
-  ngAfterViewInit(): void {
+  async ngAfterViewInit(): Promise<void> {
+    const chartJs = await import('chart.js');
+    chartJs.Chart.register(...chartJs.registerables);
+    this.chartJs = chartJs;
     this.viewReady = true;
     this.renderChart();
     this.observeResize();
@@ -71,6 +69,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.chart?.destroy();
     this.chart = null;
     this.chartType = null;
+    this.chartJs = null;
   }
 
   private observeResize(): void {
@@ -86,10 +85,11 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private renderChart(): void {
-    if (!this.viewReady || !this.data?.datasets?.length) {
+    if (!this.viewReady || !this.chartJs || !this.data?.datasets?.length) {
       return;
     }
 
+    const { Chart } = this.chartJs;
     const config: ChartConfiguration = {
       type: this.type,
       data: this.data,

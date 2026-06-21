@@ -116,6 +116,27 @@
     </div>
   </div>
 
+  <div class="panel">
+    <h2>Privacy &amp; Open Source</h2>
+    <p class="panel-desc">
+      StockCal stores all portfolio data locally in your browser. There are no accounts, no analytics,
+      and no tracking scripts. The full source code is public — you can inspect every line yourself.
+    </p>
+    <ul class="privacy-points">
+      <li>Portfolio data stays on your device (IndexedDB)</li>
+      <li>No third-party analytics or ad trackers</li>
+      <li>Optional Finnhub API calls only when you add a key</li>
+    </ul>
+    <a
+      class="btn-secondary source-link"
+      [href]="githubRepoUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      View source on GitHub
+    </a>
+  </div>
+
   <div class="panel danger-panel">
     <h2>Danger Zone</h2>
     <p class="panel-desc">Permanently remove all holdings, snapshots, and schedules from this device.</p>

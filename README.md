@@ -89,6 +89,16 @@ src/app/
 
 Portfolio data never leaves your browser unless you explicitly export a backup from Settings. Backups are JSON files that can be re-imported on any device running StockCal.
 
+There are no analytics, ad trackers, or third-party scripts beyond optional Google Fonts and the Finnhub API (when you provide a key).
+
+## Open Source Transparency
+
+The full source code is available on GitHub:
+
+**https://github.com/yasirshabbir44/stock-cal**
+
+Inspecting the code is the best way to verify that StockCal does not embed tracking scripts or send your portfolio data anywhere. The app is built entirely client-side — no backend, no accounts, no telemetry.
+
 ## License
 
-Private project.
+Source code is publicly available on GitHub. See the repository for license details.
