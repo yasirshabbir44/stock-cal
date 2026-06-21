@@ -39,6 +39,41 @@
   </div>
 
   <div class="panel">
+    <h2>Live Stock Quotes</h2>
+    <p class="panel-desc">
+      StockCal uses the free
+      <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer">Finnhub</a>
+      API for real prices and dividends. Without a key, demo prices are shown for popular tickers only.
+    </p>
+    <form class="goal-form">
+      <label>
+        Finnhub API key
+        <input
+          type="password"
+          [(ngModel)]="finnhubApiKey"
+          name="finnhubApiKey"
+          placeholder="Paste your API key"
+          autocomplete="off"
+          (ngModelChange)="onApiKeyChange()"
+        />
+      </label>
+      <span class="save-status">
+        @if (apiKeySaving()) {
+          Saving…
+        } @else if (apiKeySaved()) {
+          @if (usingLiveQuotes()) {
+            ✓ Live quotes enabled — prices refresh every minute
+          } @else {
+            ✓ Saved — add a key above for live prices
+          }
+        } @else {
+          Unsaved changes
+        }
+      </span>
+    </form>
+  </div>
+
+  <div class="panel">
     <h2>Monthly Income Goal</h2>
     <p class="panel-desc">Set a target passive income to track progress on your Paycheck dashboard.</p>
     <form class="goal-form">

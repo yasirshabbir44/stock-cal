@@ -71,7 +71,11 @@
     </form>
 
     <p class="privacy-note">
-      Stored locally in IndexedDB. Add a Finnhub API key in <code>environment.development.ts</code> for live quotes.
+      @if (usingLiveQuotes()) {
+        Live quotes enabled. Prices refresh automatically every minute while this tab is open.
+      } @else {
+        Using demo quotes. Add a free Finnhub API key in <a routerLink="/settings">Settings</a> for live prices.
+      }
     </p>
   </div>
 

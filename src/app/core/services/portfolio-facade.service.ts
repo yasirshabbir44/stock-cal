@@ -28,6 +28,8 @@ export class PortfolioFacadeService {
 
   private initialized = false;
   private initPromise: Promise<void> | null = null;
+  private autoRefreshInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly autoRefreshMs = 60_000;
 
   readonly holdings = signal<Holding[]>([]);
   readonly watchlist = signal<WatchlistItem[]>([]);
@@ -37,6 +39,7 @@ export class PortfolioFacadeService {
   readonly metrics = signal<PortfolioMetrics | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly usingLiveQuotes = this.stockApi.usingLiveQuotes;
 
   readonly allocationByTicker = computed(() => {
     const metrics = this.metrics();
@@ -140,6 +143,7 @@ export class PortfolioFacadeService {
       this.portfolioSnapshots.set(snapshots);
       this.settings.set(settings);
       this.watchlist.set(watchlist);
+      this.applyApiKeyFromSettings(settings);
       this.refreshMetrics();
       this.initialized = true;
 
@@ -250,25 +254,44 @@ export class PortfolioFacadeService {
 
   async refreshMarketData(showToast = true): Promise<void> {
     const currentHoldings = this.holdings();
-    if (currentHoldings.length === 0) {
+    const currentWatchlist = this.watchlist();
+    if (currentHoldings.length === 0 && currentWatchlist.length === 0) {
       return;
     }
 
     await this.runWithLoading(async () => {
-      const results: { updated: Holding; schedules: DividendSchedule[] }[] = [];
+      if (currentHoldings.length > 0) {
+        const results: { updated: Holding; schedules: DividendSchedule[] }[] = [];
 
-      for (const holding of currentHoldings) {
-        results.push(await this.fetchMarketDataForHolding(holding));
+        for (const holding of currentHoldings) {
+          results.push(await this.fetchMarketDataForHolding(holding));
+        }
+
+        for (const { updated, schedules } of results) {
+          await this.persistHoldingMarketData(updated, schedules);
+        }
+
+        this.holdings.set(results.map((r) => r.updated));
+        this.dividendSchedules.set(results.flatMap((r) => r.schedules));
+        await this.recordSnapshot();
+        this.refreshMetrics();
       }
 
-      for (const { updated, schedules } of results) {
-        await this.persistHoldingMarketData(updated, schedules);
-      }
+      if (currentWatchlist.length > 0) {
+        const previous = [...currentWatchlist];
+        const updated: WatchlistItem[] = [];
 
-      this.holdings.set(results.map((r) => r.updated));
-      this.dividendSchedules.set(results.flatMap((r) => r.schedules));
-      await this.recordSnapshot();
-      this.refreshMetrics();
+        for (const item of currentWatchlist) {
+          updated.push(await this.fetchMarketDataForWatchlistItem(item));
+        }
+
+        for (const item of updated) {
+          await this.db.saveWatchlistItem(item);
+        }
+
+        this.watchlist.set(updated);
+        this.checkWatchlistPriceAlerts(previous, updated);
+      }
 
       if (showToast) {
         this.toast.success('Prices refreshed');
@@ -329,7 +352,7 @@ export class PortfolioFacadeService {
     this.toast.info(`${item.ticker} removed from watchlist`);
   }
 
-  async refreshWatchlist(): Promise<void> {
+  async refreshWatchlist(showToast = true): Promise<void> {
     const items = this.watchlist();
     if (items.length === 0) {
       return;
@@ -350,7 +373,9 @@ export class PortfolioFacadeService {
 
       this.watchlist.set(updated);
       this.checkWatchlistPriceAlerts(previous, updated);
-      this.toast.success('Watchlist refreshed');
+      if (showToast) {
+        this.toast.success('Watchlist refreshed');
+      }
     }, 'Failed to refresh watchlist');
   }
 
@@ -431,6 +456,26 @@ export class PortfolioFacadeService {
     }
   }
 
+  async updateFinnhubApiKey(apiKey: string, showToast = true): Promise<void> {
+    const trimmed = apiKey.trim();
+    const settings: UserSettings = {
+      ...this.settings(),
+      finnhubApiKey: trimmed,
+    };
+
+    await this.db.saveSettings(settings);
+    this.settings.set(settings);
+    this.applyApiKeyFromSettings(settings);
+
+    if (this.holdings().length > 0 || this.watchlist().length > 0) {
+      await this.refreshMarketData(false);
+    }
+
+    if (showToast) {
+      this.toast.success(trimmed ? 'Live quotes enabled' : 'Using demo quotes');
+    }
+  }
+
   async exportData(): Promise<PortfolioExport> {
     return this.db.exportPortfolio();
   }
@@ -452,6 +497,7 @@ export class PortfolioFacadeService {
     this.portfolioSnapshots.set(data.portfolioSnapshots ?? []);
     this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings, id: 'settings' });
     this.watchlist.set(data.watchlist ?? []);
+    this.applyApiKeyFromSettings(this.settings());
     this.refreshMetrics();
     this.toast.success('Portfolio restored from backup');
   }
@@ -463,6 +509,7 @@ export class PortfolioFacadeService {
     this.dividendSchedules.set([]);
     this.portfolioSnapshots.set([]);
     this.settings.set({ ...DEFAULT_SETTINGS });
+    this.applyApiKeyFromSettings(this.settings());
     this.metrics.set(null);
     this.toast.info('Portfolio cleared');
   }
@@ -477,6 +524,38 @@ export class PortfolioFacadeService {
       this.holdings(),
       days,
     );
+  }
+
+  private applyApiKeyFromSettings(settings: UserSettings): void {
+    this.stockApi.setUserApiKey(settings.finnhubApiKey ?? '');
+    this.configureAutoRefresh();
+  }
+
+  private configureAutoRefresh(): void {
+    this.clearAutoRefresh();
+
+    if (!isPlatformBrowser(this.platformId) || !this.stockApi.hasLiveData()) {
+      return;
+    }
+
+    this.autoRefreshInterval = setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (this.holdings().length === 0 && this.watchlist().length === 0) {
+        return;
+      }
+
+      void this.refreshMarketData(false);
+    }, this.autoRefreshMs);
+  }
+
+  private clearAutoRefresh(): void {
+    if (this.autoRefreshInterval) {
+      clearInterval(this.autoRefreshInterval);
+      this.autoRefreshInterval = null;
+    }
   }
 
   private async runWithLoading(

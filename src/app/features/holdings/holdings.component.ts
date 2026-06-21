@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
 import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { POPULAR_STOCKS } from '../../core/constants/popular-stocks';
@@ -20,7 +20,7 @@ interface QuickPick {
 @Component({
   selector: 'app-holdings',
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, DecimalPipe, TickerAutocompleteComponent, StockIconComponent],
+  imports: [FormsModule, CurrencyPipe, DecimalPipe, TickerAutocompleteComponent, StockIconComponent, RouterLink],
   templateUrl: './holdings.component.html',
   styleUrl: './holdings.component.scss',
 })
@@ -31,6 +31,7 @@ export class HoldingsComponent implements OnInit {
 
   readonly holdings = this.portfolio.holdings;
   readonly loading = this.portfolio.loading;
+  readonly usingLiveQuotes = this.portfolio.usingLiveQuotes;
 
   private readonly tickerAutocomplete = viewChild(TickerAutocompleteComponent);
 

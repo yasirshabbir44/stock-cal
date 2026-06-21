@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -355,7 +355,21 @@ const MOCK_PROFILES: Record<string, MockProfileEntry> = {
 @Injectable({ providedIn: 'root' })
 export class StockApiService {
   private readonly http = inject(HttpClient);
-  private readonly apiKey = environment.finnhubApiKey;
+  private readonly userApiKey = signal('');
+
+  readonly usingLiveQuotes = computed(() => this.getEffectiveApiKey().length > 0);
+
+  setUserApiKey(key: string): void {
+    this.userApiKey.set(key.trim());
+  }
+
+  hasLiveData(): boolean {
+    return this.usingLiveQuotes();
+  }
+
+  private getEffectiveApiKey(): string {
+    return this.userApiKey() || environment.finnhubApiKey.trim();
+  }
 
   async fetchQuote(ticker: string): Promise<StockQuote> {
     const detail = await this.fetchQuoteDetail(ticker);
@@ -367,8 +381,9 @@ export class StockApiService {
 
   async fetchQuoteDetail(ticker: string): Promise<StockQuoteDetail> {
     const symbol = ticker.toUpperCase().trim();
+    const apiKey = this.getEffectiveApiKey();
 
-    if (!this.apiKey) {
+    if (!apiKey) {
       return this.getMockQuoteDetail(symbol);
     }
 
@@ -376,44 +391,60 @@ export class StockApiService {
       const [quote, dividends] = await Promise.all([
         firstValueFrom(
           this.http.get<FinnhubQuoteResponse>(
-            `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.apiKey}`,
+            `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`,
           ),
         ),
         firstValueFrom(
           this.http.get<FinnhubDividendEntry[]>(
-            `https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&token=${this.apiKey}`,
+            `https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&token=${apiKey}`,
           ),
         ),
       ]);
 
       const annualDividendPerShare = this.estimateAnnualDividend(dividends);
-      const mock = this.getMockQuoteDetail(symbol);
+      const currentPrice = this.resolveCurrentPrice(quote);
+
+      if (currentPrice <= 0) {
+        return this.getMockQuoteDetail(symbol);
+      }
 
       return {
-        currentPrice: quote.c > 0 ? quote.c : mock.currentPrice,
+        currentPrice,
         annualDividendPerShare,
         changeAmount: quote.d ?? 0,
         changePercent: quote.dp ?? 0,
-        dayHigh: quote.h > 0 ? quote.h : mock.dayHigh,
-        dayLow: quote.l > 0 ? quote.l : mock.dayLow,
-        previousClose: quote.pc > 0 ? quote.pc : mock.previousClose,
+        dayHigh: quote.h > 0 ? quote.h : currentPrice,
+        dayLow: quote.l > 0 ? quote.l : currentPrice,
+        previousClose: quote.pc > 0 ? quote.pc : currentPrice,
       };
     } catch {
       return this.getMockQuoteDetail(symbol);
     }
   }
 
+  private resolveCurrentPrice(quote: FinnhubQuoteResponse): number {
+    if (quote.c > 0) {
+      return quote.c;
+    }
+    if (quote.pc > 0) {
+      return quote.pc;
+    }
+    return 0;
+  }
+
   async fetchProfile(ticker: string): Promise<StockProfile> {
     const symbol = ticker.toUpperCase().trim();
 
-    if (!this.apiKey) {
+    const apiKey = this.getEffectiveApiKey();
+
+    if (!apiKey) {
       return this.getMockProfile(symbol);
     }
 
     try {
       const response = await firstValueFrom(
         this.http.get<FinnhubProfileResponse>(
-          `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${this.apiKey}`,
+          `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${apiKey}`,
         ),
       );
 
@@ -446,14 +477,16 @@ export class StockApiService {
     const symbol = ticker.toUpperCase().trim();
     const quote = await this.fetchQuoteDetail(symbol);
 
-    if (!this.apiKey) {
+    const apiKey = this.getEffectiveApiKey();
+
+    if (!apiKey) {
       return this.buildMockFundamentals(symbol, quote);
     }
 
     try {
       const metrics = await firstValueFrom(
         this.http.get<FinnhubMetricResponse>(
-          `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${this.apiKey}`,
+          `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${apiKey}`,
         ),
       );
 
@@ -504,14 +537,16 @@ export class StockApiService {
       return this.withLogos(POPULAR_STOCKS.slice(0, 8));
     }
 
-    if (!this.apiKey) {
+    const apiKey = this.getEffectiveApiKey();
+
+    if (!apiKey) {
       return this.searchMockSymbols(trimmed);
     }
 
     try {
       const response = await firstValueFrom(
         this.http.get<FinnhubSearchResponse>(
-          `https://finnhub.io/api/v1/search?q=${encodeURIComponent(trimmed)}&token=${this.apiKey}`,
+          `https://finnhub.io/api/v1/search?q=${encodeURIComponent(trimmed)}&token=${apiKey}`,
         ),
       );
 
@@ -533,14 +568,16 @@ export class StockApiService {
   async fetchUpcomingDividends(ticker: string): Promise<DividendSchedule[]> {
     const symbol = ticker.toUpperCase().trim();
 
-    if (!this.apiKey) {
+    const apiKey = this.getEffectiveApiKey();
+
+    if (!apiKey) {
       return this.getMockSchedules(symbol);
     }
 
     try {
       const dividends = await firstValueFrom(
         this.http.get<FinnhubDividendEntry[]>(
-          `https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&token=${this.apiKey}`,
+          `https://finnhub.io/api/v1/stock/dividend2?symbol=${symbol}&token=${apiKey}`,
         ),
       );
 
@@ -594,21 +631,11 @@ export class StockApiService {
 
   private getMockQuoteDetail(symbol: string): StockQuoteDetail {
     if (MOCK_QUOTES[symbol]) {
-      const jitter = 1 + (Math.random() * 0.02 - 0.01);
-      const base = MOCK_QUOTES[symbol];
-      return {
-        currentPrice: +(base.currentPrice * jitter).toFixed(2),
-        annualDividendPerShare: base.annualDividendPerShare,
-        changeAmount: base.changeAmount,
-        changePercent: base.changePercent,
-        dayHigh: base.dayHigh,
-        dayLow: base.dayLow,
-        previousClose: base.previousClose,
-      };
+      return { ...MOCK_QUOTES[symbol] };
     }
 
     const hash = symbol.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const price = +(50 + (hash % 200) + Math.random()).toFixed(2);
+    const price = +(50 + (hash % 200)).toFixed(2);
     const dividend = +((hash % 400) / 100).toFixed(2);
     return {
       currentPrice: price,

@@ -22,19 +22,29 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly loading = this.portfolio.loading;
 
   monthlyGoal = 1000;
+  finnhubApiKey = '';
   saving = signal(false);
+  apiKeySaving = signal(false);
   saved = signal(true);
+  apiKeySaved = signal(true);
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private apiKeySaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly usingLiveQuotes = this.portfolio.usingLiveQuotes;
 
   ngOnInit(): void {
     void this.portfolio.init().then(() => {
       this.monthlyGoal = this.settings().monthlyIncomeGoal;
+      this.finnhubApiKey = this.settings().finnhubApiKey ?? '';
     });
   }
 
   ngOnDestroy(): void {
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
+    }
+    if (this.apiKeySaveTimer) {
+      clearTimeout(this.apiKeySaveTimer);
     }
   }
 
@@ -57,6 +67,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.saved.set(true);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  onApiKeyChange(): void {
+    this.apiKeySaved.set(false);
+
+    if (this.apiKeySaveTimer) {
+      clearTimeout(this.apiKeySaveTimer);
+    }
+
+    this.apiKeySaveTimer = setTimeout(() => {
+      void this.saveApiKey();
+    }, 800);
+  }
+
+  async saveApiKey(): Promise<void> {
+    this.apiKeySaving.set(true);
+    try {
+      await this.portfolio.updateFinnhubApiKey(this.finnhubApiKey, false);
+      this.apiKeySaved.set(true);
+    } finally {
+      this.apiKeySaving.set(false);
     }
   }
 
