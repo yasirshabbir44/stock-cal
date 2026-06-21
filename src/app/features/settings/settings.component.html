@@ -46,10 +46,12 @@
       API for real prices and dividends. Without a key, demo prices are shown for popular tickers only.
     </p>
     <form class="goal-form">
-      <label>
+      <label class="form-field">
         Finnhub API key
         <input
           type="password"
+          class="form-input"
+          [class.input-flash]="feedback.isFlashing('settings-api-key')"
           [(ngModel)]="finnhubApiKey"
           name="finnhubApiKey"
           placeholder="Paste your API key"
@@ -57,14 +59,19 @@
           (ngModelChange)="onApiKeyChange()"
         />
       </label>
-      <span class="save-status">
+      <span
+        class="save-status"
+        [class.is-saving]="apiKeySaving()"
+        [class.is-saved]="apiKeySaved() && !apiKeySaving()"
+        [class.is-dirty]="!apiKeySaved() && !apiKeySaving()"
+      >
         @if (apiKeySaving()) {
           Saving…
         } @else if (apiKeySaved()) {
           @if (usingLiveQuotes()) {
-            ✓ Live quotes enabled — prices refresh every minute
+            ✓ Saved to local storage — live quotes enabled
           } @else {
-            ✓ Saved — add a key above for live prices
+            ✓ Saved to local storage
           }
         } @else {
           Unsaved changes
@@ -77,12 +84,13 @@
     <h2>Monthly Income Goal</h2>
     <p class="panel-desc">Set a target passive income to track progress on your Paycheck dashboard.</p>
     <form class="goal-form">
-      <label>
+      <label class="form-field">
         Target monthly dividend income
-        <div class="input-prefix">
+        <div class="input-prefix" [class.input-flash]="feedback.isFlashing('settings-goal')">
           <span>$</span>
           <input
             type="number"
+            class="form-input"
             [(ngModel)]="monthlyGoal"
             name="monthlyGoal"
             min="0"
@@ -91,11 +99,16 @@
           />
         </div>
       </label>
-      <span class="save-status">
+      <span
+        class="save-status"
+        [class.is-saving]="saving()"
+        [class.is-saved]="saved() && !saving()"
+        [class.is-dirty]="!saved() && !saving()"
+      >
         @if (saving()) {
           Saving…
         } @else if (saved()) {
-          ✓ Saved
+          ✓ Saved to local storage
         } @else {
           Unsaved changes
         }

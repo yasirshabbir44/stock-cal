@@ -12,14 +12,14 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
   imports: [FormsModule, TickerAutocompleteComponent, StockIconComponent],
   template: `
     @if (open()) {
-      <div class="backdrop" (click)="close()" role="presentation">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quick-add-title" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop" (click)="close()" role="presentation">
+        <div class="modal-shell" role="dialog" aria-modal="true" aria-labelledby="quick-add-title" (click)="$event.stopPropagation()">
           <header class="modal-header">
             <div>
               <h2 id="quick-add-title">Add Stock</h2>
               <p>Search by ticker or company name.</p>
             </div>
-            <button type="button" class="close-btn" (click)="close()" aria-label="Close">×</button>
+            <button type="button" class="btn-icon btn-icon-close" (click)="close()" aria-label="Close">×</button>
           </header>
 
           <div class="quick-picks">
@@ -32,7 +32,7 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
           </div>
 
           <form class="add-form" (ngSubmit)="submit()">
-            <label [class.has-error]="errors.ticker" class="ticker-field">
+            <label [class.has-error]="errors.ticker" class="form-field ticker-field">
               Ticker
               <app-ticker-autocomplete
                 [(ngModel)]="ticker"
@@ -44,21 +44,21 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
                 <span class="field-error">{{ errors.ticker }}</span>
               }
             </label>
-            <label [class.has-error]="errors.shares">
+            <label [class.has-error]="errors.shares" class="form-field">
               Shares
-              <input type="number" [(ngModel)]="shares" name="shares" placeholder="100" min="0.0001" step="any" />
+              <input type="number" class="form-input" [(ngModel)]="shares" name="shares" placeholder="100" min="0.0001" step="any" />
               @if (errors.shares) {
                 <span class="field-error">{{ errors.shares }}</span>
               }
             </label>
-            <label [class.has-error]="errors.purchasePrice">
+            <label [class.has-error]="errors.purchasePrice" class="form-field">
               Purchase Price
-              <input type="number" [(ngModel)]="purchasePrice" name="purchasePrice" placeholder="150.00" min="0.01" step="0.01" />
+              <input type="number" class="form-input" [(ngModel)]="purchasePrice" name="purchasePrice" placeholder="150.00" min="0.01" step="0.01" />
               @if (errors.purchasePrice) {
                 <span class="field-error">{{ errors.purchasePrice }}</span>
               }
             </label>
-            <div class="form-actions">
+            <div class="modal-actions">
               <button type="button" class="btn-secondary" (click)="close()">Cancel</button>
               <button type="submit" class="btn-primary" [disabled]="submitting()">
                 {{ submitting() ? 'Adding…' : 'Add to Portfolio' }}
@@ -71,27 +71,6 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
   `,
   styles: [
     `
-      .backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 1050;
-        display: grid;
-        place-items: center;
-        padding: 1rem;
-        background: var(--overlay-bg);
-        backdrop-filter: blur(4px);
-        animation: fadeIn 0.15s ease;
-      }
-
-      .modal {
-        width: min(480px, 100%);
-        padding: 1.5rem;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        box-shadow: var(--shadow-lg);
-      }
-
       .modal-header {
         display: flex;
         justify-content: space-between;
@@ -109,18 +88,6 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
         margin: 0.25rem 0 0;
         font-size: 0.875rem;
         color: var(--text-muted);
-      }
-
-      .close-btn {
-        border: none;
-        background: var(--surface-muted);
-        color: var(--text-muted);
-        width: 2rem;
-        height: 2rem;
-        border-radius: 8px;
-        font-size: 1.25rem;
-        cursor: pointer;
-        line-height: 1;
       }
 
       .quick-picks {
@@ -145,67 +112,12 @@ import { TickerAutocompleteComponent } from './ticker-autocomplete.component';
         gap: 1rem;
       }
 
-      label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.375rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-muted);
-      }
-
-      label.has-error input {
-        border-color: var(--danger);
-      }
-
-      input {
-        padding: 0.625rem 0.75rem;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface-muted);
-        color: var(--text-primary);
-        font-size: 1rem;
-      }
-
-      input:focus {
-        outline: 2px solid var(--accent-wealth);
-        outline-offset: 1px;
-      }
-
-      .field-error {
-        font-size: 0.8125rem;
-        color: var(--danger);
-        font-weight: 500;
-      }
-
-      .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-      }
-
       @media (max-width: 768px) {
-        .backdrop {
-          align-items: flex-end;
-          padding: 0;
-        }
-
-        .modal {
-          width: 100%;
+        .modal-shell {
           max-height: 92dvh;
           overflow-y: auto;
-          border-radius: 16px 16px 0 0;
           padding: 1.25rem;
           padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
-        }
-
-        .form-actions {
-          flex-direction: column-reverse;
-        }
-
-        .form-actions button {
-          width: 100%;
         }
       }
     `,

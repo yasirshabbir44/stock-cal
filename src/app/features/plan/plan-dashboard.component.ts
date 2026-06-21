@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
 
@@ -17,6 +18,7 @@ import { ChartComponent } from '../../shared/components/chart.component';
 })
 export class PlanDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
+  readonly feedback = inject(SaveFeedbackService);
 
   readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
@@ -136,6 +138,31 @@ export class PlanDashboardComponent implements OnInit {
   ngOnInit(): void {
     void this.portfolio.init();
     void this.portfolio.ensureProjectionsLoaded();
+  }
+
+  onControlChange(key: string, value: number | string, setter: (v: number) => void): void {
+    setter(+value);
+    this.feedback.flashValue(key);
+  }
+
+  onMonthlyContributionChange(value: number | string): void {
+    this.onControlChange('monthlyContribution', value, (v) => this.monthlyContribution.set(v));
+  }
+
+  onDividendGrowthChange(value: number | string): void {
+    this.onControlChange('dividendGrowthRate', value, (v) => this.dividendGrowthRate.set(v));
+  }
+
+  onPortfolioGrowthChange(value: number | string): void {
+    this.onControlChange('portfolioGrowthRate', value, (v) => this.portfolioGrowthRate.set(v));
+  }
+
+  onWithdrawalRateChange(value: number | string): void {
+    this.onControlChange('withdrawalRate', value, (v) => this.withdrawalRate.set(v));
+  }
+
+  onProjectionYearsChange(value: number | string): void {
+    this.onControlChange('projectionYears', value, (v) => this.projectionYears.set(v));
   }
 
   yearsToGoalLabel(): string {

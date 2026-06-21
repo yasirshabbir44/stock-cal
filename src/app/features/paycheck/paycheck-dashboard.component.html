@@ -8,6 +8,24 @@
   </header>
 
   @if (metrics(); as m) {
+    @if (hasActiveSimulations()) {
+      <div class="simulation-banner">
+        <div class="simulation-banner-text">
+          <strong>What-If mode</strong>
+          <span>
+            Income and yield metrics reflect simulated share purchases. Changes are not saved.
+            @if (incomeDelta(); as delta) {
+              <span class="simulation-delta">
+                Annual income {{ delta >= 0 ? '+' : '' }}{{ delta | currency: 'USD' : 'symbol' : '1.0-0' }}
+              </span>
+            }
+          </span>
+        </div>
+        <a routerLink="/holdings" class="btn-secondary btn-sm link-btn">Manage simulations</a>
+        <button type="button" class="btn-secondary btn-sm" (click)="clearAllSimulations()">Clear all</button>
+      </div>
+    }
+
     <div class="panel goal-panel">
       <div class="goal-header">
         <div>
@@ -36,7 +54,7 @@
         label="Projected Annual Income"
         [value]="m.totalAnnualDividendIncome"
         [isCurrency]="true"
-        subtitle="DPS × Shares (all holdings)"
+        [subtitle]="hasActiveSimulations() ? 'Includes simulated share purchases' : 'DPS × Shares (all holdings)'"
         [formula]="formulas.projectedAnnualIncome"
         accent="income"
         [sparklineData]="incomeSparkline()"
@@ -60,7 +78,7 @@
         label="Avg Yield on Cost"
         [value]="averageYieldOnCost()"
         [isPercent]="true"
-        subtitle="DPS / original purchase price"
+        [subtitle]="hasActiveSimulations() ? 'Reflects simulated positions' : 'DPS / original purchase price'"
         [formula]="formulas.averageYieldOnCost"
         accent="gold"
         [sparklineData]="yieldOnCostSparkline()"
@@ -111,13 +129,14 @@
           <div class="growth-input">
             <input
               type="range"
+              class="form-range"
               min="0"
               max="15"
               step="0.5"
               [ngModel]="dividendGrowthRate()"
-              (ngModelChange)="dividendGrowthRate.set(+$event)"
+              (ngModelChange)="onGrowthRateChange($event)"
             />
-            <span>{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
+            <span [class.value-flash]="feedback.isFlashing('dividendGrowthRate')">{{ dividendGrowthRate() | number: '1.1-1' }}%/yr</span>
           </div>
         </label>
       </div>
@@ -182,12 +201,27 @@
           </thead>
           <tbody>
             @for (item of m.holdings; track item.holding.id) {
-              <tr>
-                <td class="ticker" data-label="Ticker">{{ item.holding.ticker }}</td>
+              <tr [class.simulated-row]="isSimulating(item.holding.id)">
+                <td class="ticker" data-label="Ticker">
+                  {{ item.holding.ticker }}
+                  @if (isSimulating(item.holding.id)) {
+                    <span class="sim-badge">Simulated</span>
+                  }
+                </td>
                 <td data-label="DPS">{{ item.holding.annualDividendPerShare | currency: 'USD' : 'symbol' : '1.2-4' }}</td>
-                <td data-label="Shares">{{ item.holding.shares | number: '1.0-4' }}</td>
+                <td data-label="Shares">
+                  {{ item.holding.shares | number: '1.0-4' }}
+                  @if (isSimulating(item.holding.id)) {
+                    <small class="sim-note">incl. +{{ simulatedAdditionalShares(item.holding.id) | number: '1.0-4' }} simulated</small>
+                  }
+                </td>
                 <td data-label="Annual Income">{{ item.annualDividendIncome | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                <td data-label="Yield on Cost">{{ item.yieldOnCostPercent | number: '1.2-2' }}%</td>
+                <td data-label="Yield on Cost">
+                  <app-yield-trend-cell
+                    [value]="item.yieldOnCostPercent"
+                    [previousValue]="item.holding.previousYieldOnCostPercent"
+                  />
+                </td>
               </tr>
             }
           </tbody>

@@ -21,7 +21,12 @@
         </div>
         <div class="nav-stat">
           <span class="stat-label">Income / mo</span>
-          <span class="stat-value income">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+          <span class="stat-value income">
+            {{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}
+            @if (hasActiveSimulations()) {
+              <small class="sim-indicator" title="Includes simulated share purchases">What-If</small>
+            }
+          </span>
         </div>
       </div>
     }

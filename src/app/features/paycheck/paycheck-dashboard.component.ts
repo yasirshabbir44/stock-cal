@@ -5,21 +5,26 @@ import { RouterLink } from '@angular/router';
 import { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { MetricCardComponent } from '../../shared/components/metric-card.component';
 import { ChartComponent } from '../../shared/components/chart.component';
+import { YieldTrendCellComponent } from '../../shared/components/yield-trend-cell.component';
 
 @Component({
   selector: 'app-paycheck-dashboard',
   standalone: true,
-  imports: [FormsModule, MetricCardComponent, ChartComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [FormsModule, MetricCardComponent, ChartComponent, YieldTrendCellComponent, RouterLink, CurrencyPipe, DecimalPipe, DatePipe],
   templateUrl: './paycheck-dashboard.component.html',
   styleUrl: './paycheck-dashboard.component.scss',
 })
 export class PaycheckDashboardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioFacadeService);
+  readonly feedback = inject(SaveFeedbackService);
 
   readonly formulas = METRIC_FORMULAS;
   readonly metrics = this.portfolio.metrics;
+  readonly baseMetrics = this.portfolio.baseMetrics;
+  readonly hasActiveSimulations = this.portfolio.hasActiveSimulations;
   readonly schedules = this.portfolio.dividendSchedules;
   readonly settings = this.portfolio.settings;
   readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
@@ -83,6 +88,24 @@ export class PaycheckDashboardComponent implements OnInit {
     }
     return m.holdings.reduce((sum, h) => sum + h.yieldOnCostPercent, 0) / m.holdings.length;
   });
+
+  readonly incomeDelta = computed(() => {
+    const current = this.metrics()?.totalAnnualDividendIncome ?? 0;
+    const base = this.baseMetrics()?.totalAnnualDividendIncome ?? 0;
+    return current - base;
+  });
+
+  isSimulating(holdingId: string): boolean {
+    return this.portfolio.isSimulating(holdingId);
+  }
+
+  simulatedAdditionalShares(holdingId: string): number {
+    return this.portfolio.getSimulation(holdingId)?.additionalShares ?? 0;
+  }
+
+  clearAllSimulations(): void {
+    this.portfolio.clearAllSimulations();
+  }
 
   readonly incomeHistory = computed(() => {
     const m = this.metrics();
@@ -249,6 +272,11 @@ export class PaycheckDashboardComponent implements OnInit {
   ngOnInit(): void {
     void this.portfolio.init().then(() => this.portfolio.ensureTodayIncomeSnapshot());
     void this.portfolio.ensureProjectionsLoaded();
+  }
+
+  onGrowthRateChange(value: number | string): void {
+    this.dividendGrowthRate.set(+value);
+    this.feedback.flashValue('dividendGrowthRate');
   }
 
   payoutAmount(ticker: string, amountPerShare: number): number {

@@ -7,6 +7,8 @@ export interface WatchlistItem {
   notes?: string;
   currentPrice: number;
   annualDividendPerShare: number;
+  /** Trailing yield (DPS / price) captured at the previous market refresh */
+  previousDividendYieldPercent?: number;
   addedAt: string;
   lastUpdated: string;
 }

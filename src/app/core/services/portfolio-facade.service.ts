@@ -1,6 +1,12 @@
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Holding, HoldingInput } from '../models/holding.model';
+import {
+  DEFAULT_ADDITIONAL_SHARES,
+  HoldingSimulation,
+  applySimulationToHolding,
+  isSimulationActive,
+} from '../models/holding-simulation.model';
 import { DividendSchedule } from '../models/dividend-schedule.model';
 import { PortfolioSnapshot } from '../models/portfolio-snapshot.model';
 import { FirePlanSummary, FireProjectionYear } from '../models/fire-projection.model';
@@ -13,6 +19,10 @@ import {
   loadPortfolioProjectionLib,
   type PortfolioProjectionLib,
 } from '../calculations/portfolio-projection.loader';
+import {
+  computeDividendYieldPercent,
+  computeYieldOnCostPercent,
+} from '../calculations/dividend-yield.lib';
 import { PortfolioDbService } from './portfolio-db.service';
 import { PortfolioCalculatorService } from './portfolio-calculator.service';
 import { StockApiService } from './stock-api.service';
@@ -41,14 +51,42 @@ export class PortfolioFacadeService {
   private readonly projectionLib = signal<PortfolioProjectionLib | null>(null);
 
   readonly holdings = signal<Holding[]>([]);
+  readonly holdingSimulations = signal<Record<string, HoldingSimulation>>({});
   readonly watchlist = signal<WatchlistItem[]>([]);
   readonly dividendSchedules = signal<DividendSchedule[]>([]);
   readonly portfolioSnapshots = signal<PortfolioSnapshot[]>([]);
   readonly settings = signal<UserSettings>({ ...DEFAULT_SETTINGS });
-  readonly metrics = signal<PortfolioMetrics | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly usingLiveQuotes = this.stockApi.usingLiveQuotes;
+
+  readonly hasActiveSimulations = computed(() =>
+    Object.values(this.holdingSimulations()).some(isSimulationActive),
+  );
+
+  readonly effectiveHoldings = computed(() => {
+    const simulations = this.holdingSimulations();
+    return this.holdings().map((holding) => {
+      const sim = simulations[holding.id];
+      return sim ? applySimulationToHolding(holding, sim) : holding;
+    });
+  });
+
+  readonly metrics = computed<PortfolioMetrics | null>(() => {
+    const holdings = this.effectiveHoldings();
+    if (holdings.length === 0) {
+      return null;
+    }
+    return this.calculator.computePortfolioMetrics(holdings);
+  });
+
+  readonly baseMetrics = computed<PortfolioMetrics | null>(() => {
+    const holdings = this.holdings();
+    if (holdings.length === 0) {
+      return null;
+    }
+    return this.calculator.computePortfolioMetrics(holdings);
+  });
 
   readonly allocationByTicker = computed(() => {
     const metrics = this.metrics();
@@ -156,7 +194,6 @@ export class PortfolioFacadeService {
       this.settings.set(settings);
       this.watchlist.set(watchlist);
       this.applyApiKeyFromSettings(settings);
-      this.refreshMetrics();
       this.initialized = true;
 
       if (holdings.length > 0) {
@@ -207,7 +244,6 @@ export class PortfolioFacadeService {
         await this.persistHoldingMarketData(holding, schedules);
         this.appendHoldingMarketData(holding, schedules);
         await this.recordSnapshot();
-        this.refreshMetrics();
         this.toast.success(`${ticker} added to portfolio`);
       },
       'Failed to add holding',
@@ -215,7 +251,7 @@ export class PortfolioFacadeService {
     );
   }
 
-  async updateHolding(id: string, update: HoldingUpdate): Promise<void> {
+  async updateHolding(id: string, update: HoldingUpdate, showToast = true): Promise<void> {
     const holding = this.holdings().find((h) => h.id === id);
     if (!holding) {
       return;
@@ -230,8 +266,9 @@ export class PortfolioFacadeService {
     await this.db.saveHolding(updated);
     this.holdings.update((list) => list.map((h) => (h.id === id ? updated : h)));
     await this.recordSnapshot();
-    this.refreshMetrics();
-    this.toast.success(`${holding.ticker} updated`);
+    if (showToast) {
+      this.toast.saved(`${holding.ticker} saved to local storage`);
+    }
   }
 
   async removeHolding(id: string): Promise<void> {
@@ -243,8 +280,8 @@ export class PortfolioFacadeService {
     await this.db.deleteHolding(id);
     this.holdings.update((list) => list.filter((h) => h.id !== id));
     this.dividendSchedules.update((list) => list.filter((s) => s.ticker !== holding.ticker));
+    this.clearSimulation(id);
     await this.recordSnapshot();
-    this.refreshMetrics();
     this.toast.info(`${holding.ticker} removed`);
   }
 
@@ -259,7 +296,6 @@ export class PortfolioFacadeService {
       await this.persistHoldingMarketData(updated, schedules);
       this.applyHoldingMarketUpdate(id, updated, schedules);
       await this.recordSnapshot();
-      this.refreshMetrics();
       this.toast.success(`${holding.ticker} refreshed`);
     }, 'Failed to refresh holding');
   }
@@ -286,7 +322,6 @@ export class PortfolioFacadeService {
         this.holdings.set(results.map((r) => r.updated));
         this.dividendSchedules.set(results.flatMap((r) => r.schedules));
         await this.recordSnapshot();
-        this.refreshMetrics();
       }
 
       if (currentWatchlist.length > 0) {
@@ -552,7 +587,7 @@ export class PortfolioFacadeService {
     this.settings.set({ ...DEFAULT_SETTINGS, ...data.settings, id: 'settings' });
     this.watchlist.set(data.watchlist ?? []);
     this.applyApiKeyFromSettings(this.settings());
-    this.refreshMetrics();
+    this.holdingSimulations.set({});
     this.toast.success('Portfolio restored from backup');
   }
 
@@ -563,8 +598,8 @@ export class PortfolioFacadeService {
     this.dividendSchedules.set([]);
     this.portfolioSnapshots.set([]);
     this.settings.set({ ...DEFAULT_SETTINGS });
+    this.holdingSimulations.set({});
     this.applyApiKeyFromSettings(this.settings());
-    this.metrics.set(null);
     this.toast.info('Portfolio cleared');
   }
 
@@ -578,6 +613,51 @@ export class PortfolioFacadeService {
       this.holdings(),
       days,
     );
+  }
+
+  toggleSimulation(holdingId: string): void {
+    const current = this.holdingSimulations()[holdingId];
+    if (isSimulationActive(current)) {
+      this.setSimulation(holdingId, { enabled: false, additionalShares: current!.additionalShares });
+      return;
+    }
+
+    this.setSimulation(holdingId, {
+      enabled: true,
+      additionalShares: current?.additionalShares ?? DEFAULT_ADDITIONAL_SHARES,
+    });
+  }
+
+  setSimulationAdditionalShares(holdingId: string, additionalShares: number): void {
+    const current = this.holdingSimulations()[holdingId];
+    this.setSimulation(holdingId, {
+      enabled: current?.enabled ?? true,
+      additionalShares: Math.max(0, additionalShares),
+    });
+  }
+
+  clearSimulation(holdingId: string): void {
+    this.holdingSimulations.update((sims) => {
+      const next = { ...sims };
+      delete next[holdingId];
+      return next;
+    });
+  }
+
+  clearAllSimulations(): void {
+    this.holdingSimulations.set({});
+  }
+
+  isSimulating(holdingId: string): boolean {
+    return isSimulationActive(this.holdingSimulations()[holdingId]);
+  }
+
+  getSimulation(holdingId: string): HoldingSimulation | undefined {
+    return this.holdingSimulations()[holdingId];
+  }
+
+  private setSimulation(holdingId: string, sim: HoldingSimulation): void {
+    this.holdingSimulations.update((sims) => ({ ...sims, [holdingId]: sim }));
   }
 
   private applyApiKeyFromSettings(settings: UserSettings): void {
@@ -649,6 +729,14 @@ export class PortfolioFacadeService {
         ...holding,
         currentPrice: quote.currentPrice,
         annualDividendPerShare: quote.annualDividendPerShare,
+        previousDividendYieldPercent: computeDividendYieldPercent(
+          holding.annualDividendPerShare,
+          holding.currentPrice,
+        ),
+        previousYieldOnCostPercent: computeYieldOnCostPercent(
+          holding.annualDividendPerShare,
+          holding.purchasePrice,
+        ),
         lastUpdated: new Date().toISOString(),
       },
       schedules,
@@ -662,6 +750,10 @@ export class PortfolioFacadeService {
       ...item,
       currentPrice: quote.currentPrice,
       annualDividendPerShare: quote.annualDividendPerShare,
+      previousDividendYieldPercent: computeDividendYieldPercent(
+        item.annualDividendPerShare,
+        item.currentPrice,
+      ),
       lastUpdated: new Date().toISOString(),
     };
   }
@@ -710,16 +802,6 @@ export class PortfolioFacadeService {
         );
       }
     }
-  }
-
-  private refreshMetrics(): void {
-    const holdings = this.holdings();
-    if (holdings.length === 0) {
-      this.metrics.set(null);
-      return;
-    }
-
-    this.metrics.set(this.calculator.computePortfolioMetrics(holdings));
   }
 
   async ensureTodayIncomeSnapshot(): Promise<void> {

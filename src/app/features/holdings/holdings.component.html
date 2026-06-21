@@ -3,9 +3,9 @@
     <div>
       <p class="eyebrow">Portfolio</p>
       <h1>Holdings</h1>
-      <p class="subtitle">Add, edit, or remove positions. Duplicate tickers merge automatically.</p>
+      <p class="subtitle">Add, edit, or remove positions. Filter by sector, dividend frequency, or watchlist vs. portfolio.</p>
     </div>
-    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
+    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || !hasAnyPositions()">
       ↻ Refresh All
     </button>
   </header>
@@ -24,7 +24,7 @@
     </div>
 
     <form class="add-form" (ngSubmit)="onSubmit()" novalidate>
-      <label [class.has-error]="formErrors.ticker" class="ticker-field">
+      <label [class.has-error]="formErrors.ticker" class="form-field ticker-field">
         Ticker
         <app-ticker-autocomplete
           [(ngModel)]="ticker"
@@ -37,10 +37,11 @@
           <span class="field-error">{{ formErrors.ticker }}</span>
         }
       </label>
-      <label [class.has-error]="formErrors.shares">
+      <label [class.has-error]="formErrors.shares" class="form-field">
         Shares
         <input
           type="number"
+          class="form-input"
           name="shares"
           [(ngModel)]="shares"
           placeholder="100"
@@ -51,10 +52,11 @@
           <span class="field-error">{{ formErrors.shares }}</span>
         }
       </label>
-      <label [class.has-error]="formErrors.purchasePrice">
+      <label [class.has-error]="formErrors.purchasePrice" class="form-field">
         Purchase Price
         <input
           type="number"
+          class="form-input"
           name="purchasePrice"
           [(ngModel)]="purchasePrice"
           placeholder="150.00"
@@ -79,32 +81,86 @@
     </p>
   </div>
 
-  @if (holdings().length > 0) {
+  @if (hasAnyPositions()) {
     <div class="panel">
       <div class="table-toolbar">
-        <h2>Your Positions ({{ holdings().length }})</h2>
-        <div class="toolbar-actions">
-          <input
-            type="search"
-            class="search-input"
-            [(ngModel)]="searchQuery"
-            placeholder="Search holdings…"
-            aria-label="Search holdings"
-          />
-          <div class="sort-group">
-            <span>Sort:</span>
-            <button type="button" class="sort-btn" [class.active]="sortKey() === 'value'" (click)="setSort('value')">Value</button>
-            <button type="button" class="sort-btn" [class.active]="sortKey() === 'income'" (click)="setSort('income')">Income</button>
-            <button type="button" class="sort-btn" [class.active]="sortKey() === 'ticker'" (click)="setSort('ticker')">A–Z</button>
-          </div>
+        <h2>Positions ({{ allTableRows().length }})</h2>
+        <div class="sort-group">
+          <span>Sort:</span>
+          <button type="button" class="sort-btn" [class.active]="sortKey() === 'value'" (click)="setSort('value')">Value</button>
+          <button type="button" class="sort-btn" [class.active]="sortKey() === 'income'" (click)="setSort('income')">Income</button>
+          <button type="button" class="sort-btn" [class.active]="sortKey() === 'ticker'" (click)="setSort('ticker')">A–Z</button>
         </div>
       </div>
 
-      <div class="table-wrap">
-        <table class="responsive-table">
+      <app-faceted-filter-bar
+        [searchQuery]="searchQuery()"
+        [sourceFilter]="sourceFilter()"
+        [selectedSectors]="selectedSectors()"
+        [selectedFrequencies]="selectedFrequencies()"
+        [availableSectors]="availableSectors()"
+        [filteredCount]="filteredRows().length"
+        [totalCount]="allTableRows().length"
+        (searchChange)="onSearchChange($event)"
+        (sourceFilterChange)="onSourceFilterChange($event)"
+        (sectorToggle)="toggleSector($event)"
+        (frequencyToggle)="toggleFrequency($event)"
+        (clearFilters)="clearFilters()"
+      />
+
+      @if (useVirtualScroll()) {
+        <p class="virtual-scroll-hint">
+          Showing {{ filteredRows().length }} positions with windowed scrolling for performance.
+        </p>
+      }
+
+      @if (hasActiveSimulations() && metrics(); as m) {
+        <div class="simulation-banner">
+          <div class="simulation-banner-text">
+            <strong>What-If mode active</strong>
+            <span>
+              Projected annual income:
+              {{ m.totalAnnualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }}
+              @if (baseMetrics(); as base) {
+                <span class="simulation-delta">
+                  ({{ m.totalAnnualDividendIncome - base.totalAnnualDividendIncome >= 0 ? '+' : '' }}{{ m.totalAnnualDividendIncome - base.totalAnnualDividendIncome | currency: 'USD' : 'symbol' : '1.0-0' }})
+                </span>
+              }
+            </span>
+          </div>
+          <button type="button" class="btn-secondary btn-sm" (click)="clearAllSimulations()">
+            Clear all simulations
+          </button>
+        </div>
+      }
+
+      <div
+        #tableScroll
+        class="table-wrap"
+        [class.table-wrap--virtual]="useVirtualScroll()"
+      >
+        <table
+          class="responsive-table"
+          [class.responsive-table--virtual]="useVirtualScroll()"
+        >
+          @if (useVirtualScroll()) {
+            <colgroup>
+              <col class="col-ticker" />
+              <col class="col-sector" />
+              <col class="col-frequency" />
+              <col class="col-shares" />
+              <col class="col-cost" />
+              <col class="col-current" />
+              <col class="col-value" />
+              <col class="col-income" />
+              <col class="col-actions" />
+            </colgroup>
+          }
           <thead>
             <tr>
               <th>Ticker</th>
+              <th>Sector</th>
+              <th>Frequency</th>
               <th>Shares</th>
               <th>Cost Basis</th>
               <th>Current</th>
@@ -113,74 +169,183 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            @for (holding of filteredHoldings(); track holding.id) {
+          @if (filteredRows().length === 0) {
+            <tbody>
               <tr>
-                @if (editingId() === holding.id) {
+                <td colspan="9" class="no-results">No positions match your filters.</td>
+              </tr>
+            </tbody>
+          } @else if (useVirtualScroll()) {
+            <tbody class="virtual-tbody" [style.height.px]="virtualizer.getTotalSize()">
+              @for (virtualRow of virtualizer.getVirtualItems(); track virtualRow.key) {
+                @let row = filteredRows()[virtualRow.index];
+                <ng-container
+                  *ngTemplateOutlet="positionRow; context: { $implicit: row, virtualRow }"
+                />
+              }
+            </tbody>
+          } @else {
+            <tbody>
+              @for (row of filteredRows(); track row.id) {
+                <ng-container *ngTemplateOutlet="positionRow; context: { $implicit: row }" />
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+
+      <ng-template #positionRow let-row let-virtualRow="virtualRow">
+        <tr
+          [class.watchlist-row]="row.source === 'watchlist'"
+          [class.simulated-row]="row.source === 'portfolio' && isSimulating(row.id)"
+          [class.row-flash]="feedback.isFlashing('holding-' + row.id)"
+          [class.virtual-row]="virtualRow"
+          [appVirtualRowMeasure]="virtualRow ? virtualRow.index : null"
+          [measure]="virtualRow ? measureVirtualRow : null"
+          [style.transform]="virtualRow ? 'translateY(' + virtualRow.start + 'px)' : null"
+        >
+                @if (row.source === 'portfolio' && editingId() === row.id) {
                   <td class="ticker" data-label="Ticker">
                     <span class="ticker-cell">
-                      <app-stock-icon [symbol]="holding.ticker" [logoUrl]="holding.logoUrl" size="sm" />
-                      <span>{{ holding.ticker }}</span>
+                      <app-stock-icon [symbol]="row.ticker" [logoUrl]="row.logoUrl" size="sm" />
+                      <span>
+                        <strong>{{ row.ticker }}</strong>
+                        <span class="source-badge portfolio">Portfolio</span>
+                      </span>
+                    </span>
+                  </td>
+                  <td data-label="Sector">{{ row.sector }}</td>
+                  <td data-label="Frequency">
+                    <span class="freq-badge" [class.monthly]="row.dividendFrequency === 'monthly'">
+                      {{ frequencyLabel(row.dividendFrequency) }}
                     </span>
                   </td>
                   <td data-label="Shares">
-                    <input type="number" class="inline-input" [(ngModel)]="editShares" min="0.0001" step="any" />
+                    <input type="number" class="form-input form-input--inline" [(ngModel)]="editShares" min="0.0001" step="any" />
                   </td>
                   <td data-label="Cost Basis">
-                    <input type="number" class="inline-input" [(ngModel)]="editPrice" min="0.01" step="0.01" />
+                    <input type="number" class="form-input form-input--inline" [(ngModel)]="editPrice" min="0.01" step="0.01" />
                   </td>
                   <td colspan="3" class="edit-spacer"></td>
                   <td class="actions">
-                    <button type="button" class="btn-primary btn-sm" (click)="saveEdit(holding.id)">Save</button>
+                    <button type="button" class="btn-primary btn-sm" (click)="saveEdit(row.id)">Save</button>
                     <button type="button" class="btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
                   </td>
                 } @else {
                   <td class="ticker" data-label="Ticker">
                     <span class="ticker-cell">
-                      <app-stock-icon [symbol]="holding.ticker" [logoUrl]="holding.logoUrl" size="sm" />
+                      <app-stock-icon [symbol]="row.ticker" [logoUrl]="row.logoUrl" size="sm" />
                       <span>
-                        <strong>{{ holding.ticker }}</strong>
-                        @if (holding.companyName) {
-                          <small>{{ holding.companyName }}</small>
+                        <strong>{{ row.ticker }}</strong>
+                        @if (row.companyName) {
+                          <small>{{ row.companyName }}</small>
                         }
+                        <span class="source-badge" [class.portfolio]="row.source === 'portfolio'" [class.watchlist]="row.source === 'watchlist'">
+                          {{ row.source === 'portfolio' ? 'Portfolio' : 'Watchlist' }}
+                        </span>
                       </span>
                     </span>
                   </td>
-                  <td data-label="Shares">{{ holding.shares | number: '1.0-4' }}</td>
-                  <td data-label="Cost Basis">{{ holding.purchasePrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td data-label="Current">{{ holding.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td data-label="Value">{{ holding.currentPrice * holding.shares | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td class="income-cell" data-label="Annual Income">
-                    {{ holding.annualDividendPerShare * holding.shares | currency: 'USD' : 'symbol' : '1.2-2' }}
+                  <td data-label="Sector">{{ row.sector }}</td>
+                  <td data-label="Frequency">
+                    <span class="freq-badge" [class.monthly]="row.dividendFrequency === 'monthly'">
+                      {{ frequencyLabel(row.dividendFrequency) }}
+                    </span>
                   </td>
-                  <td class="actions">
-                    <button
-                      type="button"
-                      class="btn-icon"
-                      (click)="refreshOne(holding.id)"
-                      [disabled]="loading()"
-                      [title]="'Refresh ' + holding.ticker"
-                      [attr.aria-label]="'Refresh ' + holding.ticker"
-                    >
-                      {{ refreshingId() === holding.id ? '…' : '↻' }}
-                    </button>
-                    <button type="button" class="btn-secondary btn-sm" (click)="startEdit(holding.id, holding.shares, holding.purchasePrice)">
-                      Edit
-                    </button>
-                    <button type="button" class="btn-danger btn-sm" (click)="remove(holding.id, holding.ticker)">
-                      Remove
-                    </button>
-                  </td>
+                  @if (row.source === 'portfolio') {
+                    <td data-label="Shares" [class.cell-flash]="feedback.isFlashing('sim-' + row.id)">
+                      @if (isSimulating(row.id)) {
+                        <span class="simulated-value">
+                          {{ row.shares | number: '1.0-4' }}
+                          <span class="sim-plus">+{{ additionalShares(row.id) | number: '1.0-4' }}</span>
+                          <span class="sim-equals">= {{ simulatedShares(row) | number: '1.0-4' }}</span>
+                        </span>
+                      } @else {
+                        {{ row.shares | number: '1.0-4' }}
+                      }
+                    </td>
+                    <td data-label="Cost Basis">{{ row.purchasePrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                    <td data-label="Current">{{ row.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                    <td data-label="Value">{{ rowValue(row) | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                    <td class="income-cell" data-label="Annual Income">
+                      @if (isSimulating(row.id)) {
+                        <span class="simulated-value">
+                          {{ simulatedIncome(row) | currency: 'USD' : 'symbol' : '1.2-2' }}
+                          <small class="sim-delta">
+                            +{{ simulatedIncome(row) - rowIncome(row) | currency: 'USD' : 'symbol' : '1.2-2' }}
+                          </small>
+                        </span>
+                      } @else {
+                        {{ rowIncome(row) | currency: 'USD' : 'symbol' : '1.2-2' }}
+                      }
+                    </td>
+                    <td class="actions">
+                      <div class="simulate-control">
+                        <label class="simulate-toggle" [title]="'Simulate buying more ' + row.ticker + ' shares'">
+                          <input
+                            type="checkbox"
+                            [checked]="isSimulating(row.id)"
+                            (change)="toggleSimulate(row.id)"
+                          />
+                          <span>Simulate</span>
+                        </label>
+                        @if (isSimulating(row.id)) {
+                          <label class="additional-shares-input">
+                            <span class="sr-only">Additional shares for {{ row.ticker }}</span>
+                            <input
+                              type="number"
+                              class="form-input form-input--inline"
+                              [value]="additionalShares(row.id)"
+                              (input)="onAdditionalSharesChange(row.id, $any($event.target).value)"
+                              min="0.0001"
+                              step="any"
+                              placeholder="10"
+                            />
+                            <span class="shares-label">shares</span>
+                          </label>
+                        }
+                      </div>
+                      <button
+                        type="button"
+                        class="btn-icon"
+                        (click)="refreshOne(row.id)"
+                        [disabled]="loading()"
+                        [title]="'Refresh ' + row.ticker"
+                        [attr.aria-label]="'Refresh ' + row.ticker"
+                      >
+                        {{ refreshingId() === row.id ? '…' : '↻' }}
+                      </button>
+                      <button type="button" class="btn-secondary btn-sm" (click)="startEdit(row.id, row.shares!, row.purchasePrice!)">
+                        Edit
+                      </button>
+                      <button type="button" class="btn-danger btn-sm" (click)="remove(row.id, row.ticker)">
+                        Remove
+                      </button>
+                    </td>
+                  } @else {
+                    <td data-label="Shares" class="muted">—</td>
+                    <td data-label="Cost Basis" class="muted">—</td>
+                    <td data-label="Current">{{ row.currentPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                    <td data-label="Value" class="muted">—</td>
+                    <td class="income-cell" data-label="Yield">
+                      {{ rowYield(row) | percent: '1.2-2' }}
+                      @if (row.targetPrice) {
+                        <small class="target-note">Target {{ row.targetPrice | currency: 'USD' : 'symbol' : '1.2-2' }}</small>
+                      }
+                    </td>
+                    <td class="actions">
+                      <button type="button" class="btn-secondary btn-sm" (click)="prefillFromWatchlist(row)">
+                        Add
+                      </button>
+                      <a [routerLink]="['/research', row.ticker]" class="btn-secondary btn-sm link-btn">Research</a>
+                      <button type="button" class="btn-danger btn-sm" (click)="removeFromWatchlist(row.id, row.ticker)">
+                        Remove
+                      </button>
+                    </td>
+                  }
                 }
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="7" class="no-results">No holdings match "{{ searchQuery }}"</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+      </ng-template>
     </div>
   } @else {
     <div class="empty-state">

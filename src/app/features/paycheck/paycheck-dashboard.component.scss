@@ -2,6 +2,71 @@
   margin-bottom: 1.5rem;
 }
 
+.simulation-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.875rem 1rem;
+  border: 1px dashed var(--accent-gold);
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.08);
+}
+
+.simulation-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.simulation-banner-text strong {
+  color: var(--accent-gold);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.simulation-delta {
+  color: var(--accent-income);
+  font-weight: 600;
+}
+
+.simulated-row {
+  background: rgba(212, 168, 67, 0.04);
+}
+
+.sim-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(212, 168, 67, 0.15);
+  color: var(--accent-gold);
+  vertical-align: middle;
+}
+
+.sim-note {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--accent-gold);
+}
+
+.link-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .goal-panel h2 {
   margin: 0;
 }
