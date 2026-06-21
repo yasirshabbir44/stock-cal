@@ -133,6 +133,7 @@ export class PlanDashboardComponent implements OnInit {
 
   ngOnInit(): void {
     void this.portfolio.init();
+    void this.portfolio.ensureProjectionsLoaded();
   }
 
   yearsToGoalLabel(): string {
