@@ -24,7 +24,7 @@ export class DashboardLayoutService {
 
     try {
       const saved = JSON.parse(raw) as SavedDashboardLayout;
-      if (saved.version !== 1 || !Array.isArray(saved.widgets)) {
+      if (saved.version !== 2 || !Array.isArray(saved.widgets)) {
         return defaults.map((item) => ({ ...item }));
       }
 
@@ -40,7 +40,7 @@ export class DashboardLayoutService {
     }
 
     const payload: SavedDashboardLayout = {
-      version: 1,
+      version: 2,
       widgets: layout.map(({ id, x, y, cols, rows }) => ({ id, x, y, cols, rows })),
     };
 

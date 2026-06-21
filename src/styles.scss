@@ -180,15 +180,43 @@ h2 {
 
 .widget-grid-wrap gridster {
   background: transparent !important;
-  min-height: 640px;
-}
-
-.widget-grid-wrap.editing gridster {
-  min-height: 720px;
 }
 
 .widget-grid-wrap gridster-item {
   overflow: visible;
+}
+
+.home-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.home-widget-grid .widget-panel {
+  height: auto;
+  margin-bottom: 0;
+  overflow: visible;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.home-widget-grid .widget-content {
+  overflow: visible;
+}
+
+.home-widget-grid [data-widget='income-goal'] { grid-column: 1 / -1; }
+.home-widget-grid [data-widget='portfolio-growth'],
+.home-widget-grid [data-widget='dividend-calendar'] { grid-column: span 6; }
+.home-widget-grid [data-widget='asset-allocation'] { grid-column: span 5; }
+.home-widget-grid [data-widget='top-holdings'] { grid-column: span 7; }
+.home-widget-grid [data-widget='milestones'],
+.home-widget-grid [data-widget='alerts'] { grid-column: span 6; }
+.home-widget-grid [data-widget='explore'] { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  .home-widget-grid > .widget-panel {
+    grid-column: 1 / -1;
+  }
 }
 
 .widget-panel {
@@ -230,7 +258,7 @@ h2 {
 .widget-content {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .widget-content .section-title {
@@ -240,11 +268,15 @@ h2 {
 .chart-wrap {
   position: relative;
   flex: 1;
-  min-height: 180px;
+  min-height: 220px;
+}
+
+.home-widget-grid .chart-wrap {
+  min-height: 260px;
 }
 
 .chart-wrap-doughnut {
-  min-height: 200px;
+  min-height: 240px;
 }
 
 .calendar-list {

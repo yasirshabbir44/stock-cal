@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import type { ChartConfiguration, ChartData } from 'chart.js';
 import {
@@ -36,6 +36,7 @@ const HOME_DASHBOARD_ID = 'home';
     DatePipe,
     StockIconComponent,
     GetStartedGuideComponent,
+    NgTemplateOutlet,
   ],
   templateUrl: './home-dashboard.component.html',
   styleUrl: './home-dashboard.component.scss',
@@ -67,18 +68,7 @@ export class HomeDashboardComponent implements OnInit {
 
   readonly gridOptions = signal<GridsterConfig>(this.buildGridOptions(false));
 
-  readonly activeLayout = computed(() =>
-    this.layout().filter((item) => {
-      if (item.id === 'milestones') {
-        return this.achievedMilestones().length > 0 || this.nextMilestones().length > 0;
-      }
-      if (item.id === 'alerts') {
-        const ins = this.insights();
-        return !!ins && ins.alerts.length > 0;
-      }
-      return true;
-    }),
-  );
+  readonly displayWidgetOrder = HOME_DASHBOARD_LAYOUT.map((item) => item.id);
 
   readonly topHoldings = computed(() => {
     const metrics = this.metrics();
@@ -241,13 +231,13 @@ export class HomeDashboardComponent implements OnInit {
     return {
       gridType: GridType.ScrollVertical,
       displayGrid: editing ? DisplayGrid.Always : DisplayGrid.None,
-      compactType: CompactType.CompactUp,
+      compactType: CompactType.None,
       margin: 12,
       outerMargin: false,
       minCols: 12,
       maxCols: 12,
       minRows: 1,
-      fixedRowHeight: 96,
+      fixedRowHeight: 88,
       mobileBreakpoint: 768,
       pushItems: true,
       disableWarnings: true,
