@@ -5,6 +5,16 @@
   align-items: center;
 }
 
+.dashboard-header {
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-copy h1 {
+  max-width: 20ch;
+}
+
 .header-actions .btn-primary,
 .header-actions .btn-secondary {
   display: inline-flex;
@@ -103,6 +113,7 @@
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  background: var(--surface);
 }
 
 .hero-card::after {
@@ -139,6 +150,11 @@ a.hero-card:hover .hero-link-hint {
 .hero-card.summary {
   background: linear-gradient(155deg, var(--accent-gold-muted), transparent 70%);
   border-color: color-mix(in srgb, var(--accent-gold) 25%, var(--border));
+}
+
+.hero-card.summary .hero-icon {
+  background: var(--accent-gold-muted);
+  color: var(--accent-gold);
 }
 
 .hero-card-top {
@@ -699,8 +715,21 @@ a.hero-card:hover .hero-link-hint {
   font-size: 1rem;
 }
 
+.widget-grid-wrap {
+  margin-bottom: 0;
+}
+
+.widget-grid-wrap .widget-panel {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.widget-grid-wrap:not(.editing) .widget-panel:hover,
+.home-widget-grid .widget-panel:hover {
+  border-color: color-mix(in srgb, var(--accent-wealth) 35%, var(--border));
+  box-shadow: var(--shadow-md);
+}
 .customize-hint {
-  margin: -0.5rem 0 1rem;
+  margin: -0.25rem 0 1.25rem;
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);
   background: var(--accent-wealth-muted);

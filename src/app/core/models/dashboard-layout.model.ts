@@ -15,6 +15,6 @@ export interface DashboardWidgetLayout extends GridsterItem {
 }
 
 export interface SavedDashboardLayout {
-  version: 1;
+  version: 2;
   widgets: Array<Pick<DashboardWidgetLayout, 'id' | 'x' | 'y' | 'cols' | 'rows'>>;
 }
