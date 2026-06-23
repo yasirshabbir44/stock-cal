@@ -1,13 +1,12 @@
-<section class="dashboard">
+<section class="dashboard home-dashboard">
   <header class="dashboard-header">
     <div class="header-copy">
-      <p class="eyebrow">Portfolio Overview</p>
-      <h1>Investor Command Center</h1>
+      <h1>Home</h1>
       <p class="subtitle">
         @if (lastUpdated(); as updated) {
-          <span class="updated-badge">Updated {{ updated | date: 'MMM d, y · h:mm a' }}</span>
+          Updated {{ updated | date: 'MMM d, y · h:mm a' }}
         } @else {
-          Add holdings to see your wealth and income at a glance.
+          Track wealth, income, and progress toward your goals.
         }
       </p>
     </div>
@@ -15,7 +14,7 @@
       @if (metrics()) {
         <button
           type="button"
-          class="btn-secondary"
+          class="btn-secondary btn-icon-label"
           [class.active]="customizeMode()"
           (click)="toggleCustomizeMode()"
           [attr.aria-pressed]="customizeMode()"
@@ -23,7 +22,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 8h4V4M16 4v4h4M4 16h4v4M16 20v-4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          {{ customizeMode() ? 'Done' : 'Customize' }}
+          <span>{{ customizeMode() ? 'Done' : 'Customize' }}</span>
         </button>
         @if (customizeMode()) {
           <button type="button" class="btn-secondary" (click)="resetLayout()">Reset layout</button>
@@ -35,11 +34,17 @@
         </svg>
         Add Stock
       </button>
-      <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading() || holdings().length === 0">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <button
+        type="button"
+        class="btn-secondary btn-icon-label"
+        (click)="refresh()"
+        [disabled]="loading() || holdings().length === 0"
+        [attr.aria-label]="loading() ? 'Refreshing prices' : 'Refresh prices'"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" [class.spinning]="loading()">
           <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Refresh
+        <span class="refresh-label">Refresh</span>
       </button>
     </div>
   </header>
@@ -102,59 +107,62 @@
       <div class="widget-content">
         @switch (widgetId) {
           @case ('income-goal') {
-            <div class="goal-header">
-              <div>
-                <h2>Financial Independence</h2>
-                <p class="goal-summary">
-                  <span class="goal-current">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
-                  <span class="goal-separator">of</span>
-                  <span>{{ freedomNumber() | currency: 'USD' : 'symbol' : '1.0-0' }} target</span>
-                </p>
+            <div class="fire-panel">
+              <div class="goal-header">
+                <div class="goal-copy">
+                  <p class="widget-eyebrow">Financial Independence</p>
+                  <h2>Path to FIRE</h2>
+                  <p class="goal-summary">
+                    <span class="goal-current">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                    <span class="goal-separator">of</span>
+                    <span>{{ freedomNumber() | currency: 'USD' : 'symbol' : '1.0-0' }} target</span>
+                  </p>
+                </div>
+                <div class="goal-percent-wrap fire">
+                  <span class="goal-percent">{{ fireProgress() | number: '1.0-0' }}%</span>
+                  <span class="goal-percent-label">to goal</span>
+                </div>
               </div>
-              <div class="goal-percent-wrap fire">
-                <span class="goal-percent">{{ fireProgress() | number: '1.0-0' }}%</span>
-                <span class="goal-percent-label">to FIRE</span>
+              <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="fireProgress()" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-fill fire" [style.width.%]="fireProgress()"></div>
               </div>
-            </div>
-            <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="fireProgress()" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill fire" [style.width.%]="fireProgress()"></div>
-            </div>
-            <div class="fire-assumptions">
-              <label class="fire-assumption">
-                <span class="fire-assumption-label">Target portfolio</span>
-                <div class="input-prefix" [class.input-flash]="feedback.isFlashing('fire-target')">
-                  <span>$</span>
+              <div class="fire-assumptions">
+                <label class="fire-assumption">
+                  <span class="fire-assumption-label">Target portfolio</span>
+                  <div class="input-prefix" [class.input-flash]="feedback.isFlashing('fire-target')">
+                    <span>$</span>
+                    <input
+                      type="number"
+                      class="form-input"
+                      [(ngModel)]="freedomTarget"
+                      name="freedomTarget"
+                      min="0"
+                      step="10000"
+                      (ngModelChange)="onFreedomTargetChange()"
+                    />
+                  </div>
+                </label>
+                <label class="fire-assumption">
+                  <span class="fire-assumption-label">Withdrawal rate (%)</span>
                   <input
                     type="number"
-                    class="form-input"
-                    [(ngModel)]="freedomTarget"
-                    name="freedomTarget"
-                    min="0"
-                    step="10000"
-                    (ngModelChange)="onFreedomTargetChange()"
+                    class="form-input form-input--sm"
+                    [class.input-flash]="feedback.isFlashing('fire-withdrawal')"
+                    [(ngModel)]="withdrawalRate"
+                    name="withdrawalRate"
+                    min="1"
+                    max="10"
+                    step="0.25"
+                    (ngModelChange)="onWithdrawalRateChange()"
                   />
-                </div>
-              </label>
-              <label class="fire-assumption">
-                <span class="fire-assumption-label">Withdrawal rate (%)</span>
-                <input
-                  type="number"
-                  class="form-input form-input--sm"
-                  [class.input-flash]="feedback.isFlashing('fire-withdrawal')"
-                  [(ngModel)]="withdrawalRate"
-                  name="withdrawalRate"
-                  min="1"
-                  max="10"
-                  step="0.25"
-                  (ngModelChange)="onWithdrawalRateChange()"
-                />
-              </label>
+                </label>
+              </div>
+              <p class="fire-income-hint">
+                Supports {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo at
+                {{ settings().withdrawalRatePercent | number: '1.2-2' }}% withdrawal
+              </p>
+              <a routerLink="/plan" class="panel-action-link">Open financial plan →</a>
             </div>
-            <p class="fire-income-hint">
-              Supports {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo at
-              {{ settings().withdrawalRatePercent | number: '1.2-2' }}% withdrawal
-            </p>
-            <a routerLink="/plan" class="panel-action-link">Plan your path to financial independence →</a>
           }
 
           @case ('portfolio-growth') {
@@ -166,8 +174,10 @@
               <a routerLink="/wealth" class="panel-action-link">Full wealth view</a>
             </div>
             @if (snapshots().length > 0) {
-              <div class="chart-wrap">
-                <app-chart type="line" [data]="portfolioGrowthChart()" [options]="portfolioGrowthOptions" [height]="260" />
+              <div class="panel-body panel-body--chart">
+                <div class="chart-wrap">
+                  <app-chart type="line" [data]="portfolioGrowthChart()" [options]="portfolioGrowthOptions" [fill]="true" />
+                </div>
               </div>
             } @else {
               <p class="empty-chart">Refresh prices to start tracking portfolio value history.</p>
@@ -182,21 +192,29 @@
               </div>
               <a routerLink="/paycheck" class="panel-action-link">Full income view</a>
             </div>
-            @if (sortedSchedules().length > 0) {
-              <div class="calendar-list">
-                @for (schedule of sortedSchedules(); track schedule.id) {
-                  <article class="calendar-item">
-                    <div class="calendar-date">
-                      <span class="month">{{ schedule.payDate | date: 'MMM' }}</span>
-                      <span class="day">{{ schedule.payDate | date: 'd' }}</span>
-                    </div>
-                    <div class="calendar-details">
-                      <strong>{{ schedule.ticker }}</strong>
-                      <span>{{ payoutAmount(schedule.ticker, schedule.amountPerShare) | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
-                      <small>Ex-date: {{ schedule.exDate | date: 'mediumDate' }}</small>
-                    </div>
-                  </article>
-                }
+            @if (displaySchedules().length > 0) {
+              <div class="panel-body panel-body--calendar">
+                <div class="calendar-summary">
+                  <span class="calendar-summary-label">Next {{ displaySchedules().length }} payouts</span>
+                  <span class="calendar-summary-value">{{ upcomingPayoutTotal() | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+                </div>
+                <div class="calendar-list">
+                  @for (schedule of displaySchedules(); track schedule.id) {
+                    <article class="calendar-item">
+                      <div class="calendar-date">
+                        <span class="month">{{ schedule.payDate | date: 'MMM' }}</span>
+                        <span class="day">{{ schedule.payDate | date: 'd' }}</span>
+                      </div>
+                      <div class="calendar-details">
+                        <div class="calendar-row">
+                          <strong>{{ schedule.ticker }}</strong>
+                          <span class="calendar-amount">{{ payoutAmount(schedule.ticker, schedule.amountPerShare) | currency: 'USD' : 'symbol' : '1.2-2' }}</span>
+                        </div>
+                        <small>Ex-date {{ schedule.exDate | date: 'MMM d' }}</small>
+                      </div>
+                    </article>
+                  }
+                </div>
               </div>
             } @else {
               <p class="empty-chart">Add dividend-paying holdings to see upcoming payouts.</p>
@@ -334,8 +352,13 @@
           }
 
           @case ('explore') {
-            <h2 class="section-title">Explore</h2>
-            <div class="nav-cards">
+            <div class="panel-header">
+              <div>
+                <h2>Explore</h2>
+                <p class="panel-desc">Jump to any section of your portfolio workspace.</p>
+              </div>
+            </div>
+            <div class="nav-cards explore-cards">
               <a routerLink="/wealth" class="nav-card">
                 <span class="nav-card-icon wealth" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -453,22 +476,22 @@
     <div class="welcome-panel">
       <div class="welcome-header">
         <div class="welcome-icon" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
             <path d="M3 17l6-6 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M14 7h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div class="welcome-copy">
-          <p class="eyebrow">Get Started</p>
-          <h2>Build your investor command center</h2>
-          <p>Load a pre-filled demo to explore every dashboard instantly, or add your own positions. All data stays private on your device.</p>
+          <p class="eyebrow">Welcome</p>
+          <h2>Start building your portfolio</h2>
+          <p>Load a demo portfolio to explore every dashboard, or add your own positions. All data stays private on your device.</p>
         </div>
       </div>
 
       <app-get-started-guide [showManualAdd]="true" (addManually)="openQuickAdd()" />
 
       <div class="quick-start">
-        <h3>Or pick a single stock to start</h3>
+        <h3>Quick add a popular stock</h3>
         <div class="chip-row">
           @for (stock of quickStartStocks; track stock.symbol) {
             <button type="button" class="chip chip-with-icon" (click)="openQuickAdd(stock.symbol)">
