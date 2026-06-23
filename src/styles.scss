@@ -204,9 +204,50 @@ h2 {
   overflow: visible;
 }
 
-.home-widget-grid [data-widget='income-goal'] { grid-column: 1 / -1; }
+.home-widget-grid [data-widget='income-goal'] {
+  grid-column: 1 / -1;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-plan) 8%, var(--surface)),
+    var(--surface) 55%
+  );
+  border-color: color-mix(in srgb, var(--accent-plan) 22%, var(--border));
+}
 .home-widget-grid [data-widget='portfolio-growth'],
-.home-widget-grid [data-widget='dividend-calendar'] { grid-column: span 6; }
+.home-widget-grid [data-widget='dividend-calendar'] {
+  grid-column: span 6;
+  display: flex;
+  flex-direction: column;
+  min-height: 26rem;
+}
+
+.home-widget-grid [data-widget='portfolio-growth'] .widget-content,
+.home-widget-grid [data-widget='dividend-calendar'] .widget-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.home-widget-grid [data-widget='portfolio-growth'] .panel-header,
+.home-widget-grid [data-widget='dividend-calendar'] .panel-header {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.home-widget-grid [data-widget='portfolio-growth'] .panel-body--chart,
+.home-widget-grid [data-widget='dividend-calendar'] .panel-body--calendar {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.home-widget-grid [data-widget='portfolio-growth'] .chart-wrap {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
 .home-widget-grid [data-widget='asset-allocation'] { grid-column: span 5; }
 .home-widget-grid [data-widget='top-holdings'] { grid-column: span 7; }
 .home-widget-grid [data-widget='milestones'],
@@ -328,6 +369,10 @@ h2 {
 .calendar-details small {
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.home-widget-grid .nav-cards {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .widget-grid-wrap .nav-cards {

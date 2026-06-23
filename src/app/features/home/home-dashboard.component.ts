@@ -114,7 +114,10 @@ export class HomeDashboardComponent implements OnInit, OnDestroy {
   readonly portfolioGrowthChart = computed<ChartData<'line'>>(() => {
     const snapshots = this.snapshots();
     return {
-      labels: snapshots.map((s) => s.date),
+      labels: snapshots.map((s) => {
+        const date = new Date(`${s.date}T12:00:00`);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
       datasets: [
         {
           label: 'Portfolio Value',
@@ -123,7 +126,8 @@ export class HomeDashboardComponent implements OnInit, OnDestroy {
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           fill: true,
           tension: 0.3,
-          pointRadius: 3,
+          pointRadius: 2,
+          pointHoverRadius: 4,
         },
       ],
     };
@@ -140,8 +144,18 @@ export class HomeDashboardComponent implements OnInit, OnDestroy {
       },
     },
     scales: {
-      y: {
+      x: {
+        grid: { display: false },
         ticks: {
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 6,
+        },
+      },
+      y: {
+        grid: { color: 'rgba(148, 163, 184, 0.15)' },
+        ticks: {
+          maxTicksLimit: 5,
           callback: (value: string | number) =>
             `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
         },
@@ -150,8 +164,15 @@ export class HomeDashboardComponent implements OnInit, OnDestroy {
     maintainAspectRatio: false,
   };
 
-  readonly sortedSchedules = computed(() =>
-    [...this.schedules()].sort((a, b) => a.payDate.localeCompare(b.payDate)).slice(0, 8),
+  readonly displaySchedules = computed(() =>
+    [...this.schedules()].sort((a, b) => a.payDate.localeCompare(b.payDate)).slice(0, 6),
+  );
+
+  readonly upcomingPayoutTotal = computed(() =>
+    this.displaySchedules().reduce(
+      (sum, schedule) => sum + this.payoutAmount(schedule.ticker, schedule.amountPerShare),
+      0,
+    ),
   );
 
   readonly nextMilestones = computed(() =>

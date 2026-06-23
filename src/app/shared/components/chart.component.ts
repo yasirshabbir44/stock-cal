@@ -14,7 +14,7 @@ import { type ChartJsModule, loadChartJs } from '../utils/chart-js.loader';
 @Component({
   selector: 'app-chart',
   standalone: true,
-  template: `<div class="chart-wrapper" [style.height.px]="height"><canvas #canvas></canvas></div>`,
+  template: `<div class="chart-wrapper" [class.chart-wrapper--fill]="fill" [style.height]="fill ? '100%' : height + 'px'"><canvas #canvas></canvas></div>`,
   styles: [
     `
       .chart-wrapper {
@@ -22,8 +22,12 @@ import { type ChartJsModule, loadChartJs } from '../utils/chart-js.loader';
         width: 100%;
       }
 
+      .chart-wrapper--fill {
+        min-height: 200px;
+      }
+
       @media (max-width: 768px) {
-        .chart-wrapper {
+        .chart-wrapper:not(.chart-wrapper--fill) {
           min-height: 220px;
         }
       }
@@ -37,6 +41,7 @@ export class ChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input({ required: true }) data!: ChartData;
   @Input() options: ChartConfiguration['options'] = {};
   @Input() height = 280;
+  @Input() fill = false;
 
   private chartJs: ChartJsModule | null = null;
   private chart: InstanceType<ChartJsModule['Chart']> | null = null;
