@@ -65,7 +65,7 @@
           </div>
           <div class="benchmark-stat">
             <span class="benchmark-label">S&P 500 Benchmark</span>
-            <span class="benchmark-value">+10.00%/yr</span>
+            <span class="benchmark-value">+{{ bench.benchmarkGrowthPercent | number: '1.2-2' }}% total</span>
           </div>
           <div class="benchmark-stat highlight">
             <span class="benchmark-label">Alpha (Outperformance)</span>
@@ -78,9 +78,18 @@
     }
 
     <div class="panel chart-panel">
-      <h2>Portfolio Value Over Time</h2>
+      <h2>Historical Performance</h2>
+      @if (performanceSeries(); as series) {
+        <p class="panel-desc">
+          Portfolio value vs. {{ series.benchmarkLabel }} since {{ series.dates[0] | date: 'MMM d, y' }}.
+        </p>
+      } @else if (snapshots().length > 0) {
+        <p class="panel-desc">
+          Tracking started — keep refreshing prices daily to build a full performance history.
+        </p>
+      }
       @if (snapshots().length > 0) {
-        <app-chart type="line" [data]="chartData()" [options]="chartOptions" />
+        <app-chart type="line" [data]="chartData()" [options]="chartOptions()" />
       } @else {
         <p class="empty-chart">Add holdings and refresh prices to start tracking value history.</p>
       }

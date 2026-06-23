@@ -1,5 +1,6 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { ChartConfiguration, ChartData } from 'chart.js';
 import {
@@ -11,6 +12,7 @@ import {
   GridType,
 } from 'angular-gridster2';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
+import { SaveFeedbackService } from '../../core/services/save-feedback.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { QuickAddService } from '../../core/services/quick-add.service';
 import { DashboardLayoutService } from '../../core/services/dashboard-layout.service';
@@ -30,6 +32,7 @@ const HOME_DASHBOARD_ID = 'home';
     GridsterComponent,
     GridsterItemComponent,
     ChartComponent,
+    FormsModule,
     RouterLink,
     CurrencyPipe,
     DecimalPipe,
@@ -41,17 +44,19 @@ const HOME_DASHBOARD_ID = 'home';
   templateUrl: './home-dashboard.component.html',
   styleUrl: './home-dashboard.component.scss',
 })
-export class HomeDashboardComponent implements OnInit {
+export class HomeDashboardComponent implements OnInit, OnDestroy {
   private readonly portfolio = inject(PortfolioFacadeService);
   private readonly theme = inject(ThemeService);
   private readonly quickAdd = inject(QuickAddService);
   private readonly layoutService = inject(DashboardLayoutService);
+  readonly feedback = inject(SaveFeedbackService);
 
   readonly metrics = this.portfolio.metrics;
   readonly insights = this.portfolio.portfolioInsights;
   readonly holdings = this.portfolio.holdings;
   readonly loading = this.portfolio.loading;
-  readonly incomeGoalProgress = this.portfolio.incomeGoalProgress;
+  readonly fireProgress = this.portfolio.fireProgress;
+  readonly freedomNumber = this.portfolio.freedomNumber;
   readonly settings = this.portfolio.settings;
   readonly lastUpdated = this.portfolio.lastUpdated;
   readonly milestones = this.portfolio.portfolioMilestones;
@@ -63,6 +68,11 @@ export class HomeDashboardComponent implements OnInit {
   readonly layout = signal<DashboardWidgetLayout[]>(
     this.layoutService.loadLayout(HOME_DASHBOARD_ID, HOME_DASHBOARD_LAYOUT),
   );
+
+  freedomTarget = 0;
+  withdrawalRate = 4;
+  private fireTargetSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private withdrawalSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private saveLayoutTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -172,8 +182,57 @@ export class HomeDashboardComponent implements OnInit {
   }));
 
   ngOnInit(): void {
-    void this.portfolio.init();
+    void this.portfolio.init().then(() => this.syncFireInputs());
     void this.portfolio.ensureProjectionsLoaded();
+  }
+
+  ngOnDestroy(): void {
+    if (this.saveLayoutTimer) {
+      clearTimeout(this.saveLayoutTimer);
+    }
+    if (this.fireTargetSaveTimer) {
+      clearTimeout(this.fireTargetSaveTimer);
+    }
+    if (this.withdrawalSaveTimer) {
+      clearTimeout(this.withdrawalSaveTimer);
+    }
+  }
+
+  onFreedomTargetChange(): void {
+    if (this.fireTargetSaveTimer) {
+      clearTimeout(this.fireTargetSaveTimer);
+    }
+
+    this.fireTargetSaveTimer = setTimeout(() => {
+      void this.saveFreedomTarget();
+    }, 800);
+  }
+
+  async saveFreedomTarget(): Promise<void> {
+    await this.portfolio.updateFreedomTarget(this.freedomTarget);
+    this.feedback.persisted('fire-target', 'Saved to local storage', false);
+    this.syncFireInputs();
+  }
+
+  onWithdrawalRateChange(): void {
+    if (this.withdrawalSaveTimer) {
+      clearTimeout(this.withdrawalSaveTimer);
+    }
+
+    this.withdrawalSaveTimer = setTimeout(() => {
+      void this.saveWithdrawalRate();
+    }, 800);
+  }
+
+  async saveWithdrawalRate(): Promise<void> {
+    await this.portfolio.updateWithdrawalRate(this.withdrawalRate);
+    this.feedback.persisted('fire-withdrawal', 'Saved to local storage', false);
+    this.syncFireInputs();
+  }
+
+  private syncFireInputs(): void {
+    this.freedomTarget = Math.round(this.freedomNumber());
+    this.withdrawalRate = this.settings().withdrawalRatePercent;
   }
 
   toggleCustomizeMode(): void {
@@ -215,7 +274,7 @@ export class HomeDashboardComponent implements OnInit {
 
   widgetLabel(id: DashboardWidgetLayout['id']): string {
     const labels: Record<DashboardWidgetLayout['id'], string> = {
-      'income-goal': 'Income Goal',
+      'income-goal': 'Financial Independence',
       'portfolio-growth': 'Portfolio Growth',
       'dividend-calendar': 'Dividend Calendar',
       'asset-allocation': 'Asset Allocation',

@@ -6,6 +6,7 @@ import {
   BenchmarkComparison,
   IncomeProjectionYear,
   InsightAlert,
+  PerformanceChartSeries,
   PortfolioInsights,
   RebalanceSuggestion,
   SectorAllocation,
@@ -166,6 +167,8 @@ export function computeRebalanceSuggestions(metrics: PortfolioMetrics): Rebalanc
     .sort((a, b) => Math.abs(b.driftPercent) - Math.abs(a.driftPercent));
 }
 
+export const SP500_ANNUAL_RETURN_PERCENT = 10;
+
 export function computeBenchmarkComparison(
   snapshots: PortfolioSnapshot[],
   portfolioGrowthPercent: number,
@@ -187,16 +190,39 @@ export function computeBenchmarkComparison(
       ? (Math.pow(last.totalValue / first.totalValue, 365 / daysBetween) - 1) * 100
       : portfolioGrowthPercent;
 
-  const sp500AnnualReturn = 10;
-  const benchmarkGrowthPercent = sp500AnnualReturn * (daysBetween / 365);
-  const alphaPercent = annualizedPortfolio - sp500AnnualReturn;
+  const benchmarkGrowthPercent = SP500_ANNUAL_RETURN_PERCENT * (daysBetween / 365);
+  const alphaPercent = annualizedPortfolio - SP500_ANNUAL_RETURN_PERCENT;
 
   return {
     portfolioGrowthPercent: annualizedPortfolio,
     benchmarkGrowthPercent,
     alphaPercent,
-    benchmarkLabel: 'S&P 500 (10% annualized)',
+    benchmarkLabel: `S&P 500 (${SP500_ANNUAL_RETURN_PERCENT}% annualized)`,
     trackingDays: Math.round(daysBetween),
+  };
+}
+
+export function computePerformanceChartSeries(
+  snapshots: PortfolioSnapshot[],
+  sp500AnnualReturnPercent = SP500_ANNUAL_RETURN_PERCENT,
+): PerformanceChartSeries | null {
+  if (snapshots.length < 2) {
+    return null;
+  }
+
+  const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  const first = sorted[0];
+  const firstDate = new Date(first.date).getTime();
+  const dailyRate = Math.pow(1 + sp500AnnualReturnPercent / 100, 1 / 365) - 1;
+
+  return {
+    dates: sorted.map((s) => s.date),
+    portfolioValues: sorted.map((s) => s.totalValue),
+    benchmarkValues: sorted.map((s) => {
+      const days = (new Date(s.date).getTime() - firstDate) / (1000 * 60 * 60 * 24);
+      return first.totalValue * Math.pow(1 + dailyRate, days);
+    }),
+    benchmarkLabel: `S&P 500 (${sp500AnnualReturnPercent}% annualized)`,
   };
 }
 
@@ -291,6 +317,20 @@ export function computePortfolioMilestones(
   ];
 }
 
+export function computeFreedomNumber(
+  monthlyIncomeGoal: number,
+  withdrawalRatePercent: number,
+): number {
+  return withdrawalRatePercent > 0 ? (monthlyIncomeGoal * 12) / (withdrawalRatePercent / 100) : 0;
+}
+
+export function computeMonthlyIncomeFromFreedomNumber(
+  freedomNumber: number,
+  withdrawalRatePercent: number,
+): number {
+  return withdrawalRatePercent > 0 ? (freedomNumber * (withdrawalRatePercent / 100)) / 12 : 0;
+}
+
 export function computeFirePlan(
   metrics: PortfolioMetrics,
   monthlyIncomeGoal: number,
@@ -299,8 +339,7 @@ export function computeFirePlan(
   portfolioGrowthRatePercent: number,
   withdrawalRatePercent: number,
 ): FirePlanSummary {
-  const freedomNumber =
-    withdrawalRatePercent > 0 ? (monthlyIncomeGoal * 12) / (withdrawalRatePercent / 100) : 0;
+  const freedomNumber = computeFreedomNumber(monthlyIncomeGoal, withdrawalRatePercent);
   const monthlyGap =
     monthlyIncomeGoal > 0 ? Math.max(0, monthlyIncomeGoal - metrics.projectedMonthlyIncome) : 0;
   const goalReached = monthlyIncomeGoal > 0 && metrics.projectedMonthlyIncome >= monthlyIncomeGoal;

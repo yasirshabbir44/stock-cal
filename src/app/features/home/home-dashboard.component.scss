@@ -83,10 +83,6 @@
     font-size: 1.375rem;
   }
 
-  .health-pill {
-    white-space: normal;
-  }
-
   .chart-panel {
     min-height: 260px;
   }
@@ -256,6 +252,10 @@ a.hero-card:hover .hero-link-hint {
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
+
+  &.fire .goal-percent {
+    color: #8b5cf6;
+  }
 }
 
 .goal-percent {
@@ -288,6 +288,37 @@ a.hero-card:hover .hero-link-hint {
   border-radius: 999px;
   transition: width 0.4s ease;
   min-width: 2px;
+
+  &.fire {
+    background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+  }
+}
+
+.fire-assumptions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.fire-assumption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.fire-assumption-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.fire-income-hint {
+  margin: 0.625rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 
 .milestones-panel {
@@ -377,22 +408,6 @@ a.hero-card:hover .hero-link-hint {
   border-left: 3px solid #f59e0b;
 }
 
-.health-pill {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.3125rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.health-pill.good {
-  background: var(--accent-income-muted);
-  color: var(--accent-income);
-}
-
 .mini-alerts {
   list-style: none;
   margin: 0 0 0.75rem;
@@ -432,23 +447,6 @@ a.hero-card:hover .hero-link-hint {
 
 .alert-info {
   border-left: 3px solid var(--accent-wealth);
-}
-
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 1.5rem;
-}
-
-.chart-panel {
-  min-height: 340px;
-}
-
-.empty-chart {
-  color: var(--text-muted);
-  padding: 2.5rem 0;
-  text-align: center;
-  font-size: 0.9375rem;
 }
 
 .holdings-panel .panel-header {
@@ -503,120 +501,6 @@ a.hero-card:hover .hero-link-hint {
 .income {
   color: var(--accent-income);
   font-weight: 500;
-}
-
-.nav-section {
-  margin-top: 0.5rem;
-}
-
-.section-title {
-  margin: 0 0 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.nav-cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-}
-
-@media (max-width: 640px) {
-  .nav-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-.nav-card {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 1rem 1.125rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-}
-
-.nav-card:hover {
-  border-color: var(--accent-wealth);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.nav-card-icon {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-.nav-card-icon.wealth {
-  background: var(--accent-wealth-muted);
-  color: var(--accent-wealth);
-}
-
-.nav-card-icon.income {
-  background: var(--accent-income-muted);
-  color: var(--accent-income);
-}
-
-.nav-card-icon.insights {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-}
-
-.nav-card-icon.research {
-  background: rgba(6, 182, 212, 0.12);
-  color: #06b6d4;
-}
-
-.nav-card-icon.holdings {
-  background: var(--surface-muted);
-  color: var(--text-muted);
-}
-
-.nav-card-icon.plan {
-  background: rgba(139, 92, 246, 0.12);
-  color: #8b5cf6;
-}
-
-.nav-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.nav-card-body strong {
-  font-size: 0.9375rem;
-  font-weight: 600;
-}
-
-.nav-card-body span {
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.nav-card-arrow {
-  color: var(--text-muted);
-  font-size: 1.125rem;
-  flex-shrink: 0;
-  transition: transform 0.15s, color 0.15s;
-}
-
-.nav-card:hover .nav-card-arrow {
-  color: var(--accent-wealth);
-  transform: translateX(2px);
 }
 
 .welcome-panel {
@@ -715,19 +599,6 @@ a.hero-card:hover .hero-link-hint {
   font-size: 1rem;
 }
 
-.widget-grid-wrap {
-  margin-bottom: 0;
-}
-
-.widget-grid-wrap .widget-panel {
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.widget-grid-wrap:not(.editing) .widget-panel:hover,
-.home-widget-grid .widget-panel:hover {
-  border-color: color-mix(in srgb, var(--accent-wealth) 35%, var(--border));
-  box-shadow: var(--shadow-md);
-}
 .customize-hint {
   margin: -0.25rem 0 1.25rem;
   padding: 0.75rem 1rem;

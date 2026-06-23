@@ -6,9 +6,9 @@ export const HOME_DASHBOARD_LAYOUT: DashboardWidgetLayout[] = [
     x: 0,
     y: 0,
     cols: 12,
-    rows: 2,
+    rows: 3,
     minItemCols: 6,
-    minItemRows: 2,
+    minItemRows: 3,
     maxItemRows: 3,
   },
   {

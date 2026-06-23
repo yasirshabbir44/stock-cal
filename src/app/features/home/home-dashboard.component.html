@@ -104,21 +104,56 @@
           @case ('income-goal') {
             <div class="goal-header">
               <div>
-                <h2>Income Goal Progress</h2>
+                <h2>Financial Independence</h2>
                 <p class="goal-summary">
-                  <span class="goal-current">{{ m.projectedMonthlyIncome | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
+                  <span class="goal-current">{{ m.totalPortfolioValue | currency: 'USD' : 'symbol' : '1.0-0' }}</span>
                   <span class="goal-separator">of</span>
-                  <span>{{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo target</span>
+                  <span>{{ freedomNumber() | currency: 'USD' : 'symbol' : '1.0-0' }} target</span>
                 </p>
               </div>
-              <div class="goal-percent-wrap">
-                <span class="goal-percent">{{ incomeGoalProgress() | number: '1.0-0' }}%</span>
-                <span class="goal-percent-label">complete</span>
+              <div class="goal-percent-wrap fire">
+                <span class="goal-percent">{{ fireProgress() | number: '1.0-0' }}%</span>
+                <span class="goal-percent-label">to FIRE</span>
               </div>
             </div>
-            <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="incomeGoalProgress()" aria-valuemin="0" aria-valuemax="100">
-              <div class="progress-fill" [style.width.%]="incomeGoalProgress()"></div>
+            <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="fireProgress()" aria-valuemin="0" aria-valuemax="100">
+              <div class="progress-fill fire" [style.width.%]="fireProgress()"></div>
             </div>
+            <div class="fire-assumptions">
+              <label class="fire-assumption">
+                <span class="fire-assumption-label">Target portfolio</span>
+                <div class="input-prefix" [class.input-flash]="feedback.isFlashing('fire-target')">
+                  <span>$</span>
+                  <input
+                    type="number"
+                    class="form-input"
+                    [(ngModel)]="freedomTarget"
+                    name="freedomTarget"
+                    min="0"
+                    step="10000"
+                    (ngModelChange)="onFreedomTargetChange()"
+                  />
+                </div>
+              </label>
+              <label class="fire-assumption">
+                <span class="fire-assumption-label">Withdrawal rate (%)</span>
+                <input
+                  type="number"
+                  class="form-input form-input--sm"
+                  [class.input-flash]="feedback.isFlashing('fire-withdrawal')"
+                  [(ngModel)]="withdrawalRate"
+                  name="withdrawalRate"
+                  min="1"
+                  max="10"
+                  step="0.25"
+                  (ngModelChange)="onWithdrawalRateChange()"
+                />
+              </label>
+            </div>
+            <p class="fire-income-hint">
+              Supports {{ settings().monthlyIncomeGoal | currency: 'USD' : 'symbol' : '1.0-0' }}/mo at
+              {{ settings().withdrawalRatePercent | number: '1.2-2' }}% withdrawal
+            </p>
             <a routerLink="/plan" class="panel-action-link">Plan your path to financial independence →</a>
           }
 

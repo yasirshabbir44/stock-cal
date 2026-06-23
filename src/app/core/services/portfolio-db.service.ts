@@ -138,7 +138,7 @@ export class PortfolioDbService {
   async getSettings(): Promise<UserSettings> {
     const db = await this.getDb();
     const settings = await db.get('settings', 'settings');
-    return settings ?? { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, ...settings, id: 'settings' };
   }
 
   async saveSettings(settings: UserSettings): Promise<void> {
