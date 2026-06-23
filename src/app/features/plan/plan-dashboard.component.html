@@ -127,8 +127,8 @@
           <input
             type="range"
             class="form-range"
-            min="2"
-            max="6"
+            min="1"
+            max="10"
             step="0.25"
             [ngModel]="withdrawalRate()"
             (ngModelChange)="onWithdrawalRateChange($event)"
@@ -153,12 +153,12 @@
     </div>
 
     <div class="two-col">
-      <div class="panel chart-panel">
+      <div class="panel chart-panel chart-panel--stretch">
         <h2>Income Projection</h2>
         <p class="panel-desc">Monthly passive income vs. your goal over time.</p>
         <app-chart type="line" [data]="incomeChart()" [options]="chartOptions" [height]="320" />
       </div>
-      <div class="panel chart-panel">
+      <div class="panel chart-panel chart-panel--stretch">
         <h2>Wealth Projection</h2>
         <p class="panel-desc">Portfolio growth with contributions vs. freedom number.</p>
         <app-chart type="line" [data]="wealthChart()" [options]="chartOptions" [height]="320" />

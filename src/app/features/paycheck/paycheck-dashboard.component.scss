@@ -129,10 +129,6 @@
   margin-bottom: 1.5rem;
 }
 
-.chart-panel {
-  min-height: 360px;
-}
-
 .chart-panel-header {
   display: flex;
   align-items: center;
@@ -208,11 +204,6 @@
 .growth-badge.negative {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
-}
-
-.empty-chart {
-  color: var(--text-muted);
-  padding: 2rem 0;
 }
 
 .calendar-list {
@@ -386,10 +377,6 @@ th {
   .metrics-grid {
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
-  }
-
-  .chart-panel {
-    min-height: 260px;
   }
 
   .projection-header {

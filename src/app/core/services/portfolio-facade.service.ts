@@ -23,11 +23,16 @@ import {
   computeDividendYieldPercent,
   computeYieldOnCostPercent,
 } from '../calculations/dividend-yield.lib';
+import {
+  computeFreedomNumber,
+  computeMonthlyIncomeFromFreedomNumber,
+} from '../calculations/portfolio-projection.lib';
 import { PortfolioDbService } from './portfolio-db.service';
 import { PortfolioCalculatorService } from './portfolio-calculator.service';
 import { StockApiService } from './stock-api.service';
 import { ToastService } from './toast.service';
 import { getStockLogoUrl } from '../utils/stock-logo.util';
+import { generateDemoPortfolioSnapshots } from '../utils/demo-portfolio-snapshots.util';
 import { DEMO_PORTFOLIO } from '../constants/demo-portfolio';
 import {
   nextHoldingSortOrder,
@@ -127,6 +132,20 @@ export class PortfolioFacadeService {
     return Math.min(100, (monthly / goal) * 100);
   });
 
+  readonly freedomNumber = computed(() => {
+    const settings = this.settings();
+    return computeFreedomNumber(settings.monthlyIncomeGoal, settings.withdrawalRatePercent);
+  });
+
+  readonly fireProgress = computed(() => {
+    const target = this.freedomNumber();
+    const portfolioValue = this.metrics()?.totalPortfolioValue ?? 0;
+    if (target <= 0) {
+      return 0;
+    }
+    return Math.min(100, (portfolioValue / target) * 100);
+  });
+
   readonly portfolioMilestones = computed(() => {
     const lib = this.projectionLib();
     const metrics = this.metrics();
@@ -150,6 +169,14 @@ export class PortfolioFacadeService {
       this.portfolioSnapshots(),
       metrics.totalAssetGrowthPercent,
     );
+  });
+
+  readonly performanceChartSeries = computed(() => {
+    const lib = this.projectionLib();
+    if (!lib) {
+      return null;
+    }
+    return lib.computePerformanceChartSeries(this.portfolioSnapshots());
   });
 
   readonly lastUpdated = computed(() => {
@@ -203,7 +230,7 @@ export class PortfolioFacadeService {
       this.holdings.set(normalizedHoldings);
       this.dividendSchedules.set(schedules);
       this.portfolioSnapshots.set(snapshots);
-      this.settings.set(settings);
+      this.settings.set({ ...DEFAULT_SETTINGS, ...settings, id: 'settings' });
       this.watchlist.set(watchlist);
       this.applyApiKeyFromSettings(settings);
       this.initialized = true;
@@ -327,7 +354,21 @@ export class PortfolioFacadeService {
       this.holdings.set(holdings);
       this.dividendSchedules.set(allSchedules);
       this.watchlist.set(watchlist);
-      await this.recordSnapshot();
+
+      const metrics = this.calculator.computePortfolioMetrics(holdings);
+      const demoSnapshots = generateDemoPortfolioSnapshots({
+        currentValue: metrics.totalPortfolioValue,
+        costBasis: metrics.totalCostBasis,
+        annualDividendIncome: metrics.totalAnnualDividendIncome,
+        averageYieldOnCostPercent: this.calculator.computeAverageYieldOnCost(metrics),
+      });
+
+      for (const snapshot of demoSnapshots) {
+        await this.db.upsertPortfolioSnapshot(snapshot);
+      }
+
+      const snapshots = await this.db.getPortfolioSnapshots();
+      this.portfolioSnapshots.set(snapshots);
       this.toast.success('Demo portfolio loaded — explore dashboards and experiment freely');
       loaded = true;
     }, 'Failed to load demo portfolio');
@@ -652,6 +693,28 @@ export class PortfolioFacadeService {
     if (showToast) {
       this.toast.success('Income goal saved');
     }
+  }
+
+  async updateWithdrawalRate(rate: number, showToast = false): Promise<void> {
+    const settings: UserSettings = {
+      ...this.settings(),
+      withdrawalRatePercent: Math.min(10, Math.max(1, rate)),
+    };
+
+    await this.db.saveSettings(settings);
+    this.settings.set(settings);
+    if (showToast) {
+      this.toast.success('Withdrawal rate saved');
+    }
+  }
+
+  async updateFreedomTarget(freedomNumber: number, showToast = false): Promise<void> {
+    const settings = this.settings();
+    const monthlyIncomeGoal = computeMonthlyIncomeFromFreedomNumber(
+      Math.max(0, freedomNumber),
+      settings.withdrawalRatePercent,
+    );
+    await this.updateMonthlyIncomeGoal(monthlyIncomeGoal, showToast);
   }
 
   async updateFinnhubApiKey(apiKey: string, showToast = true): Promise<void> {

@@ -29,8 +29,9 @@ export class PlanDashboardComponent implements OnInit {
   readonly monthlyContribution = signal(500);
   readonly dividendGrowthRate = signal(5);
   readonly portfolioGrowthRate = signal(7);
-  readonly withdrawalRate = signal(4);
   readonly projectionYears = signal(20);
+
+  readonly withdrawalRate = computed(() => this.settings().withdrawalRatePercent);
 
   readonly firePlan = computed(() =>
     this.portfolio.computeFirePlan(
@@ -159,7 +160,10 @@ export class PlanDashboardComponent implements OnInit {
   }
 
   onWithdrawalRateChange(value: number | string): void {
-    this.onControlChange('withdrawalRate', value, (v) => this.withdrawalRate.set(v));
+    const rate = +value;
+    void this.portfolio.updateWithdrawalRate(rate).then(() => {
+      this.feedback.flashValue('withdrawalRate');
+    });
   }
 
   onProjectionYearsChange(value: number | string): void {

@@ -1,12 +1,14 @@
 export interface UserSettings {
   id: 'settings';
   monthlyIncomeGoal: number;
+  withdrawalRatePercent: number;
   finnhubApiKey?: string;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   id: 'settings',
   monthlyIncomeGoal: 1000,
+  withdrawalRatePercent: 4,
   finnhubApiKey: '',
 };
 

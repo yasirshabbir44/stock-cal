@@ -42,6 +42,13 @@ export interface BenchmarkComparison {
   trackingDays: number;
 }
 
+export interface PerformanceChartSeries {
+  dates: string[];
+  portfolioValues: number[];
+  benchmarkValues: number[];
+  benchmarkLabel: string;
+}
+
 export interface PortfolioInsights {
   healthScore: number;
   healthLabel: string;

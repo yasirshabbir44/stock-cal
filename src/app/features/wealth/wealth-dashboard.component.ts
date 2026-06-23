@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import type { ChartData } from 'chart.js';
 import { METRIC_FORMULAS } from '../../core/constants/metric-formulas';
 import { PortfolioFacadeService } from '../../core/services/portfolio-facade.service';
@@ -10,7 +10,7 @@ import { GetStartedGuideComponent } from '../../shared/components/get-started-gu
 @Component({
   selector: 'app-wealth-dashboard',
   standalone: true,
-  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DecimalPipe, GetStartedGuideComponent],
+  imports: [MetricCardComponent, ChartComponent, CurrencyPipe, DatePipe, DecimalPipe, GetStartedGuideComponent],
   templateUrl: './wealth-dashboard.component.html',
   styleUrl: './wealth-dashboard.component.scss',
 })
@@ -21,9 +21,43 @@ export class WealthDashboardComponent implements OnInit {
   readonly metrics = this.portfolio.metrics;
   readonly snapshots = this.portfolio.portfolioSnapshots;
   readonly benchmark = this.portfolio.benchmarkComparison;
+  readonly performanceSeries = this.portfolio.performanceChartSeries;
   readonly loading = this.portfolio.loading;
 
   readonly chartData = computed<ChartData<'line'>>(() => {
+    const performance = this.performanceSeries();
+    if (performance) {
+      return {
+        labels: performance.dates.map((date) =>
+          new Date(date + 'T00:00:00').toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          }),
+        ),
+        datasets: [
+          {
+            label: 'Your Portfolio',
+            data: performance.portfolioValues,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+          },
+          {
+            label: performance.benchmarkLabel,
+            data: performance.benchmarkValues,
+            borderColor: '#94a3b8',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.3,
+            pointRadius: 0,
+            borderDash: [6, 4],
+          },
+        ],
+      };
+    }
+
     const snapshots = this.snapshots();
     return {
       labels: snapshots.map((s) => s.date),
@@ -41,13 +75,17 @@ export class WealthDashboardComponent implements OnInit {
     };
   });
 
-  readonly chartOptions = {
+  readonly chartOptions = computed(() => ({
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: this.performanceSeries() != null,
+        position: 'top' as const,
+        labels: { boxWidth: 12, padding: 16 },
+      },
       tooltip: {
         callbacks: {
-          label: (ctx: { parsed: { y: number | null } }) =>
-            `$${(ctx.parsed.y ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            `${ctx.dataset.label ?? 'Value'}: $${(ctx.parsed.y ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
         },
       },
     },
@@ -59,7 +97,7 @@ export class WealthDashboardComponent implements OnInit {
         },
       },
     },
-  };
+  }));
 
   ngOnInit(): void {
     void this.portfolio.init();
